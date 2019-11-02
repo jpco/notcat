@@ -35,7 +35,7 @@
  * actions          ???         - TODO - %(A:key)?
  * arbitrary hints  %(h:key)
  * category         %c          - TODO?
- * expire_timeout   %e
+ * expire_timeout   %t
  * urgency          %u
  */
 
@@ -183,7 +183,7 @@ extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
                 }
                 put_str(buf, body);
                 break;
-            case 'e':
+            case 't':
                 put_int(buf, n->timeout);
                 break;
             case 'u':

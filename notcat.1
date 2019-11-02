@@ -50,7 +50,7 @@ Summary
 Body text, with newlines replaced with spaces to maintain printing
 one line per notification
 .TP
-\fB%e\fR
+\fB%t\fR
 Expiration timeout in milliseconds; 0 indicates "no timeout", and -1
 indicates "timeout is up to the notification server"
 .TP
@@ -247,6 +247,10 @@ Name or path of the icon to display with this notification.
 If set,
 .B notcat
 will print the ID of the notification after sending it.
+.TP
+\fB-t\fR, \fB--timeout=\fITIMEOUT\fR
+Notification timeout.
+The default value is managed by the server.
 .TP
 \fB-u\fR, \fB--urgency=\fIURGENCY\fR
 Urgency of the notification.
