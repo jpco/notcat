@@ -36,12 +36,17 @@ static char *on_close_opt = NULL;
 static char *on_empty_opt = NULL;
 
 static void usage(char *arg0, int code) {
+    size_t alen = strlen(arg0);
+    char spaces[alen + 1];
+    memset(spaces, ' ', alen);
+    spaces[alen] = '\0';
+
     fprintf(stderr, "Usage:\n"
             "  %s [-h | --help]\n"
             "  %s [send <opts> | close <id> | getcapabilities | getserverinfo]\n"
             "  %s [-se] [-t <timeout>] [--capabilities=<cap1>,<cap2>...] \\\n"
-            "           [--on-notify=<cmd>] [--on-close=<cmd>] [--on-empty=<cmd>] \\\n"
-            "           [--] [format]...\n"
+            "  %s [--on-notify=<cmd>] [--on-close=<cmd>] [--on-empty=<cmd>] \\\n"
+            "  %s [--] [format]...\n"
             "\n"
             "Options:\n"
             "  --on-notify=<cmd>  Command to run on each notification created\n\n"
@@ -58,7 +63,7 @@ static void usage(char *arg0, int code) {
             "\n"
             "For more detailed information and options for the 'send' subcommand,\n"
             "consult `man 1 notcat`.\n",
-           arg0, arg0, arg0);
+           arg0, arg0, arg0, spaces, spaces);
 
     exit(code);
 }
