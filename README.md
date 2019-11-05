@@ -4,12 +4,12 @@ For when you just want something to print, or run, whenever notifications arrive
 
 Not ready for the limelight just yet.
 
-Notcat is built using the [notlib](https://github.com/jpco/notlib) library.
+notcat is built using the [notlib](https://github.com/jpco/notlib) library.
 
 
 ## Downloading && installing
 
-Notcat uses git submodules.  To properly clone and build:
+notcat uses git submodules.  To properly clone and build:
 
 1. `git clone https://github.com/jpco/notcat && cd notcat`
 2. `git submodule init`
@@ -25,8 +25,8 @@ Usage:
   notcat [-h|--help]
   notcat [send <opts> | close <id> | getcapabilities | getserverinfo]
   notcat [-se] [-t <timeout>] [--capabilities=<cap1>,<cap2>...] \
-            [--on-notify=<cmd>] [--on-close=<cmd>] [--on-empty=<cmd>] \
-            [--] [format]...
+         [--on-notify=<cmd>] [--on-close=<cmd>] [--on-empty=<cmd>] \
+         [--] [format]...
 
 Options:
   --on-notify=<command> Command to run on each notification created (default: echo)
@@ -49,14 +49,14 @@ Options:
 
 ## --on-notify, --on-close, --on-empty
 
-Notcat can be execute arbitrary subcommands when notifications are received and closed via the `--on-notify` and `--on-close` flags, respectively.  When the last notification is closed, the `--on-empty` subcommand is run after `--on-close`.
+notcat can execute arbitrary subcommands when notifications are received and closed via the `--on-notify` and `--on-close` flags, respectively.  When the last notification is closed, the `--on-empty` subcommand is run after `--on-close`.
 
-At present, the commands invoked by `--on-notify`, `--on-close`, and `--on-empty` are blocking -- for notcat, as well as anything that sends a notification while the commands are running.
+At present, the commands invoked by `--on-notify`, `--on-close`, and `--on-empty` are blocking -- for notcat, as well as anything that sends a notification while the commands are running (yikes!)
 
 
 ## Format strings
 
-Notcat is configurable via format strings (much like the standard `date` command).  It accepts any number of format string arguments.
+notcat is configurable via format strings (much like the standard `date` command).  It accepts any number of format string arguments.
 
 Supported format sequences are:
 
@@ -71,8 +71,6 @@ Supported format sequences are:
 %n          type of event
 %(h:NAME)   hint by NAME
 ```
-
-The `%(h:NAME)` format sequence can currently only access hints of type int, byte, boolean, or string.
 
 Planned future sequences are:
 
@@ -155,3 +153,4 @@ $ notcat -e --on-notify=./post.sh
 
  - more format sequences and environment variables
  - markup "support", as far as it will go
+ - actions
