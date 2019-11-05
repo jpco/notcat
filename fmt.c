@@ -99,26 +99,18 @@ static void fmt_body(const char *in, char *out) {
 }
 
 static void put_hint(buffer *buf, const NLNote *n, const char *name) {
-    NLHint h;
-    if (!nl_get_hint(n, name, &h))
+    char *hs;
+    if (!(hs = nl_get_hint_as_string(n, name)))
         return;
 
-    switch (h.type) {
-    case HINT_TYPE_INT:
-        put_int(buf, h.d.i);
-        break;
-    case HINT_TYPE_BYTE:
-        put_uint(buf, h.d.byte);
-        break;
-    case HINT_TYPE_BOOLEAN:
-        put_str(buf, (h.d.bl ? "TRUE" : "FALSE"));
-        break;
-    case HINT_TYPE_STRING:
-        put_str(buf, h.d.str);
-        break;
-    default:
-        break;
+    if (nl_get_hint_type(n, name) == HINT_TYPE_STRING) {
+        const char *s;
+        nl_get_string_hint(n, name, &s);
+        put_str(buf, s);
+    } else {
+        put_str(buf, hs);
     }
+    free(hs);
 }
 
 #define NORMAL      0

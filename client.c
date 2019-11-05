@@ -159,10 +159,15 @@ get_hint: {
                     }
                 }
             }
-            if (name == NULL || value == NULL) {
-                fprintf(stderr, "Hint must be formatted as "
-                        "TYPE:NAME:VALUE\n");
-                return 2;
+            if (value == NULL) {
+                if (name == NULL) {
+                    fprintf(stderr, "Hint must be formatted as "
+                            "NAME:VALUE or TYPE:NAME:VALUE\n");
+                    return 2;
+                }
+                value = name;
+                name = fs;
+                fs = "s";
             }
 
             if (!g_variant_type_string_is_valid(fs)) {

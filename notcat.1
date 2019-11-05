@@ -227,7 +227,7 @@ be used in the notification display.
 Notification category, which should be one of the values given in the
 D-Bus Notifications API documentation.
 .TP
-\fB-h\fR, \fB--hint=\fITYPE\fB:\fINAME\fB:\fIVALUE\fR
+\fB-h\fR, \fB--hint=\fR[\fITYPE\fB:\fR]\fINAME\fB:\fIVALUE\fR
 A hint, which is an arbitrary key-value pair.
 .B notcat
 uses GLib's type format strings and parser to get values from this
@@ -235,6 +235,9 @@ argument.
 Most likely types to be useful are: \fBb\fR, boolean; \fBy\fR, byte;
 \fBs\fR, string; \fBi\fR, 32-bit int; and \fBu\fR, 32-bit unsigned
 int.
+If no type is specified,
+.B notcat
+defaults to a string.
 .TP
 \fB-i\fR, \fB--id=\fIID\fR
 Notification ID to replace (if currently in use).
@@ -295,7 +298,7 @@ License, version 3+.
 Actions, markup, categories, and links are not yet supported.
 Moreover,
 .B notcat
-lies and claims that actions are supported.
+lies (!) and claims that actions are supported.
 .PP
 Some capabilities will likely never be supported.
 In particular, the \fBbody-images\fR, \fBicon-multi\fR,
