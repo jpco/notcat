@@ -169,6 +169,8 @@ get_hint: {
                 name = fs;
                 fs = "s";
             }
+            if (*fs == '\0')
+                fs = "s";
 
             if (!g_variant_type_string_is_valid(fs)) {
                 fprintf(stderr, "'%s' is not a valid D-Bus variant type\n",

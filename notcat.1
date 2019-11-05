@@ -58,8 +58,10 @@ indicates "timeout is up to the notification server"
 Urgency; either 'LOW', 'NORMAL', or 'CRITICAL'
 .TP
 \fB%n\fR
-Type of notcat event (i.e., which subcommand is being called); either
-"notify" or "close".
+Type of
+.B notcat
+event (i.e., which subcommand is being called); either "notify" or
+"close".
 .TP
 \fB%(h:\fINAME\fB)\fR
 Hint value with the given
@@ -227,7 +229,7 @@ be used in the notification display.
 Notification category, which should be one of the values given in the
 D-Bus Notifications API documentation.
 .TP
-\fB-h\fR, \fB--hint=\fR[\fITYPE\fB:\fR]\fINAME\fB:\fIVALUE\fR
+\fB-h\fR, \fB--hint=\fR[[\fITYPE\fR]\fB:\fR]\fINAME\fB:\fIVALUE\fR
 A hint, which is an arbitrary key-value pair.
 .B notcat
 uses GLib's type format strings and parser to get values from this
@@ -235,7 +237,7 @@ argument.
 Most likely types to be useful are: \fBb\fR, boolean; \fBy\fR, byte;
 \fBs\fR, string; \fBi\fR, 32-bit int; and \fBu\fR, 32-bit unsigned
 int.
-If no type is specified,
+If no type is specified, or the given type is empty,
 .B notcat
 defaults to a string.
 .TP
