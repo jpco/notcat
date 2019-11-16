@@ -102,13 +102,19 @@ extern void run_cmd(char *cmd, const NLNote *n) {
         }
     }
 
-    if (!fork()) {
+    switch (fork()) {
+    case -1:
+        perror("Could not fork");
+        break;
+    case 0: {
         extern char **environ;
         int err = execve(cmd_argv[0], cmd_argv, environ);
         perror(cmd_argv[0]);
         exit(err);
     }
-    wait(NULL);
+    default:
+        wait(NULL);
+    }
 
     for (i = 0; i < fmt_len; i++)
         free(cmd_argv[i+prefix_len]);

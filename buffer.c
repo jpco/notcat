@@ -29,17 +29,21 @@ struct _buffer {
     char *curr;
 };
 
-extern void put_strn(buffer *buf, size_t cn, const char *c) {
+static void check_buffer_size(buffer *buf, size_t cn) {
     ptrdiff_t csz = buf->curr - buf->start;
     if (csz + cn > buf->len) {
-        ptrdiff_t n_csz = csz * 2;
-        while (n_csz < (csz + cn)) {
-            n_csz = n_csz * 2;
+        ptrdiff_t nsz = csz * 2;
+        while (nsz < (csz + cn)) {
+            nsz = nsz * 2;
         }
-        buf->len = n_csz;
-        buf->start = realloc(buf->start, n_csz);
+        buf->len = nsz;
+        buf->start = realloc(buf->start, nsz);
         buf->curr = buf->start + csz;
     }
+}
+
+extern void put_strn(buffer *buf, size_t cn, const char *c) {
+    check_buffer_size(buf, cn);
 
     size_t i;
     for (i = 0; i < cn; i++) {
@@ -53,7 +57,9 @@ extern void put_str(buffer *buf, const char *c) {
 }
 
 extern void put_char(buffer *buf, char c) {
-    put_strn(buf, 1, &c);
+    check_buffer_size(buf, 1);
+    *(buf->curr) = c;
+    buf->curr++;
 }
 
 extern buffer *new_buffer(size_t initial) {
