@@ -23,30 +23,48 @@
 
 #include "notcat.h"
 
-static GDBusProxy *connect() {
-    GDBusProxy *proxy;
+static GDBusConnection *connect() {
     GDBusConnection *conn;
     GError *error = NULL;
 
     conn = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
-    g_assert_no_error(error);
+
+    if (error != NULL) {
+        g_error_free(error);
+        return NULL;
+    }
+    return conn;
+}
+
+static GDBusProxy *make_proxy(GDBusConnection *conn) {
+    GDBusProxy *proxy;
+    GError *error = NULL;
+
+    if (conn == NULL)
+        return NULL;
 
     proxy = g_dbus_proxy_new_sync(conn,
-                    G_DBUS_PROXY_FLAGS_NONE,
-                    NULL,
-                    "org.freedesktop.Notifications",  /* name */
-                    "/org/freedesktop/Notifications", /* path */
-                    "org.freedesktop.Notifications",  /* interface */
-                    NULL,
-                    &error);
-    g_assert_no_error(error);
+                                  G_DBUS_PROXY_FLAGS_NONE,
+                                  NULL,
+                                  "org.freedesktop.Notifications",
+                                  "/org/freedesktop/Notifications",
+                                  "org.freedesktop.Notifications",
+                                  NULL,
+                                  &error);
 
+    if (error != NULL) {
+        g_error_free(error);
+        return NULL;
+    }
     return proxy;
 }
 
 static GVariant *call(GDBusProxy *proxy, char *name, GVariant *args) {
     GVariant *result;
     GError *error = NULL;
+
+    if (proxy == NULL)
+        return NULL;
 
     result = g_dbus_proxy_call_sync(proxy,
             name,
@@ -55,7 +73,10 @@ static GVariant *call(GDBusProxy *proxy, char *name, GVariant *args) {
             -1,
             NULL,
             &error);
-    g_assert_no_error(error);
+    if (error != NULL) {
+        g_error_free(error);
+        return NULL;
+    }
     return result;
 }
 
@@ -301,7 +322,9 @@ get_urgency:
     if (body == NULL)
         body = "";
 
-    GDBusProxy *proxy = connect();
+    GDBusProxy *proxy = make_proxy(connect());
+    if (proxy == NULL)
+        return 1;
     GVariant *result = call(proxy, "Notify",
             g_variant_new("(susssasa{sv}i)",
                 app_name,
@@ -313,14 +336,12 @@ get_urgency:
                 hints,
                 (int32_t) timeout));
 
-    g_variant_builder_unref(actions);
-    g_variant_builder_unref(hints);
+    if (result == NULL)
+        return 1;
 
     if (print_id)
         printf("%u\n", g_variant_get_uint32(
                     g_variant_get_child_value(result, 0)));
-
-    g_variant_unref(result);
 
     return 0;
 }
@@ -333,17 +354,19 @@ extern int close_note(char *arg) {
     if (id < 0 || id > 65536)
         return 11;
 
-    GDBusProxy *proxy = connect();
+    GDBusProxy *proxy = make_proxy(connect());
     GVariant *result = call(proxy, "CloseNotification",
-            g_variant_new("(u)", id));
-    g_variant_unref(result);
+                            g_variant_new("(u)", id));
 
-    return 0;
+    return (result == NULL);
 }
 
 extern int get_capabilities() {
-    GDBusProxy *proxy = connect();
+    GDBusProxy *proxy = make_proxy(connect());
     GVariant *result = call(proxy, "GetCapabilities", NULL);
+
+    if (result == NULL)
+        return 1;
 
     GVariant *inner = g_variant_get_child_value(result, 0);
 
@@ -352,15 +375,15 @@ extern int get_capabilities() {
     for (size_t i = 0; i < len; i++)
         printf("%s\n", arr[i]);
 
-    g_variant_unref(inner);
-    g_variant_unref(result);
-
     return 0;
 }
 
 extern int get_server_information() {
-    GDBusProxy *proxy = connect();
+    GDBusProxy *proxy = make_proxy(connect());
     GVariant *result = call(proxy, "GetServerInformation", NULL);
+
+    if (result == NULL)
+        return 1;
 
     printf("name: %s\n", g_variant_get_string(
                 g_variant_get_child_value(result, 0), NULL));
