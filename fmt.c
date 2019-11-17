@@ -34,7 +34,7 @@
  * body             %B          - also %(B:30) for 'first 30 chars of b'?
  * actions          ???         - TODO - %(A:key)?
  * arbitrary hints  %(h:key)
- * category         %c          - TODO?
+ * category         %c
  * expire_timeout   %t
  * urgency          %u
  */
@@ -180,6 +180,9 @@ extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
                 break;
             case 'u':
                 put_urgency(buf, n->urgency);
+                break;
+            case 'c':
+                put_hint(buf, n, "category");
                 break;
             case 'n':
                 put_str(buf, current_event);

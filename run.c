@@ -98,6 +98,12 @@ extern void run_cmd(char *cmd, const NLNote *n) {
             snprintf(str, 12, "%d", n->timeout);
             setenv("NOTE_TIMEOUT", str, 1);
 
+            // FIXME: string categories (the typical category case)
+            // shouldn't have quotes around them
+            char *h = nl_get_hint_as_string(n, "category");
+            setenv("NOTE_CATEGORY", h, 1);
+            free(h);
+
             // TODO: Figure out a sensible way to do hints
         }
     }

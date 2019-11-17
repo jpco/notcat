@@ -68,6 +68,7 @@ Supported format sequences are:
 %B          body
 %e          expiration timeout
 %u          urgency
+%c          category
 %n          type of event
 %(h:NAME)   hint by NAME
 ```
@@ -76,7 +77,6 @@ Planned future sequences are:
 
 ```
 %(A:key)    actions (these will probably be exposed in other ways as well)
-%c          category
 ```
 
 When the `-e` flag is *not* set, format arguments are filled-in and passed 1:1 to executed subcommands.  For example, when a notification is sent to notcat executed as

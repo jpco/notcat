@@ -55,13 +55,17 @@ Expiration timeout in milliseconds; 0 indicates "no timeout", and -1
 indicates "timeout is up to the notification server"
 .TP
 \fB%u\fR
-Urgency; either 'LOW', 'NORMAL', or 'CRITICAL'
+Urgency; either "LOW", "NORMAL", or "CRITICAL"
 .TP
 \fB%n\fR
 Type of
 .B notcat
 event (i.e., which subcommand is being called); either "notify" or
-"close".
+"close"
+.TP
+\fB%c\fR
+Category; often of the form \fIclass\fR.\fIspecific\fR, but may be
+simply \fIclass\fR
 .TP
 \fB%(h:\fINAME\fB)\fR
 Hint value with the given
@@ -88,6 +92,10 @@ Summary
 .TP
 $\fINOTE_BODY\fR
 Notification body
+.TP
+$\fINOTE_CATEGORY\fR
+Category; often of the form \fIclass\fR.\fIspecific\fR, but may be
+simply \fIclass\fR
 .TP
 $\fINOTE_URGENCY\fR
 Urgency; either 'LOW', 'NORMAL', or 'CRITICAL'
@@ -135,7 +143,7 @@ By default,
 .B notcat
 tries to advertise a reasonable set of capabilities, either (if
 .B \-e
-is not set) based on the
+is not set) based on its
 .I FORMAT
 arguments, or based on the set of environment variables that
 .B notcat
