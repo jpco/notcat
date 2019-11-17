@@ -253,6 +253,13 @@ If set,
 .B notcat
 will print the ID of the notification after sending it.
 .TP
+\fB--sync\fR
+If set,
+.B notcat
+will wait until the notification is closed to exit.
+It will also print the name of any actions invoked on the
+notification when they occur.
+.TP
 \fB-t\fR, \fB--timeout=\fITIMEOUT\fR
 Notification timeout.
 The default value is managed by the server.

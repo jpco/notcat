@@ -80,10 +80,82 @@ static GVariant *call(GDBusProxy *proxy, char *name, GVariant *args) {
     return result;
 }
 
+typedef int (*signal_callback_type)(const gchar *signal_name,
+                                    GVariant *parameters, void *data);
+
+typedef struct {
+    guint sub_id;
+    void *data;
+    GMainLoop *loop;
+    signal_callback_type callback;
+} signal_callback_user_data_type;
+
+static void signal_callback(GDBusConnection *conn,
+                            const gchar *sender_name,
+                            const gchar *object_path,
+                            const gchar *iface_name,
+                            const gchar *signal_name,
+                            GVariant *parameters,
+                            gpointer user_data) {
+    signal_callback_user_data_type *d
+        = (signal_callback_user_data_type *) user_data;
+    if (d->callback(signal_name, parameters, d->data)) {
+        g_dbus_connection_signal_unsubscribe(conn, d->sub_id);
+        g_main_loop_quit(d->loop);
+    }
+}
+
+static int listen(GDBusConnection *conn, signal_callback_type cb, void *data) {
+    GMainLoop *loop;
+
+    if (conn == NULL)
+        return 1;
+
+    loop = g_main_loop_new(NULL, FALSE);
+
+    signal_callback_user_data_type ud;
+    ud.callback = cb;
+    ud.loop = loop;
+    ud.data = data;
+    ud.sub_id = g_dbus_connection_signal_subscribe(conn,
+                        NULL,
+                        "org.freedesktop.Notifications",
+                        NULL,
+                        "/org/freedesktop/Notifications",
+                        NULL,
+                        G_DBUS_SIGNAL_FLAGS_NONE,
+                        signal_callback,
+                        (gpointer)&ud,
+                        NULL);
+    g_main_loop_run(loop);
+    return 0;
+}
+
 static int get_int(char *str, long *out) {
     char *end;
     *out = strtol(str, &end, 10);
     return (str != NULL && *str != '\0' && *end == '\0');
+}
+
+static int sync_send_callback(const gchar *signal_name,
+                              GVariant *parameters, void *data) {
+    guint32 id = *(guint32 *)data;
+    GVariant *iv = g_variant_get_child_value(parameters, 0);
+    if (id != g_variant_get_uint32(iv)) {
+        g_variant_unref(iv);
+        return 0;
+    }
+    g_variant_unref(iv);
+
+    if (!strcmp(signal_name, "NotificationClosed"))
+        return 1;
+
+    if (!strcmp(signal_name, "ActionInvoked")) {
+        GVariant *av = g_variant_get_child_value(parameters, 1);
+        printf("%s\n", g_variant_get_string(av, NULL));
+        g_variant_unref(av);
+    }
+    return 0;
 }
 
 extern int send_note(int argc, char **argv) {
@@ -97,6 +169,7 @@ extern int send_note(int argc, char **argv) {
     GVariantBuilder *hints = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 
     char print_id = 0;
+    char sync = 0;
 
     char mode = '\0';
     int skip = 0;
@@ -292,6 +365,9 @@ get_urgency:
                 } else if (!strcmp(arg, "--print-id")) {
                     print_id = 1;
                     break;
+                } else if (!strcmp(arg, "--sync")) {
+                    sync = 1;
+                    break;
                 }
 
                 fprintf(stderr, "Unrecognized option '%s'\n", arg);
@@ -322,7 +398,8 @@ get_urgency:
     if (body == NULL)
         body = "";
 
-    GDBusProxy *proxy = make_proxy(connect());
+    GDBusConnection *conn = connect();
+    GDBusProxy *proxy = make_proxy(conn);
     if (proxy == NULL)
         return 1;
     GVariant *result = call(proxy, "Notify",
@@ -339,11 +416,15 @@ get_urgency:
     if (result == NULL)
         return 1;
 
-    if (print_id)
-        printf("%u\n", g_variant_get_uint32(
-                    g_variant_get_child_value(result, 0)));
+    id = g_variant_get_uint32(g_variant_get_child_value(result, 0));
 
-    return 0;
+    if (print_id)
+        printf("%ld\n", id);
+
+    if (!sync)
+        return 0;
+
+    return listen(conn, sync_send_callback, &id);
 }
 
 extern int close_note(char *arg) {
