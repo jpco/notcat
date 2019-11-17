@@ -23,7 +23,7 @@ notcat uses git submodules.  To properly clone and build:
 ```
 Usage:
   notcat [-h|--help]
-  notcat [send <opts> | close <id> | getcapabilities | getserverinfo]
+  notcat [send <opts> | close <id> | getcapabilities | getserverinfo | listen]
   notcat [-se] [-t <timeout>] [--capabilities=<cap1>,<cap2>...] \
          [--on-notify=<cmd>] [--on-close=<cmd>] [--on-empty=<cmd>] \
          [--] [format]...
