@@ -148,6 +148,8 @@ $ notcat -e --on-notify=./post.sh
 
  - `send`: Send a notification to the server.
 
+ - `listen`: Listen for signals from the server, and print a message for each one received.
+
 
 ## TODO
 

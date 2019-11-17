@@ -66,5 +66,6 @@ extern int send_note(int argc, char **argv);
 extern int close_note(char *arg);
 extern int get_capabilities();
 extern int get_server_information();
+extern int listen_for_signals();
 
 #endif

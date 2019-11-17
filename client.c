@@ -477,3 +477,35 @@ extern int get_server_information() {
 
     return 0;
 }
+
+static int listen_callback(const gchar *signal_name,
+                           GVariant *parameters, void *data) {
+    if (!strcmp(signal_name, "NotificationClosed")) {
+        GVariant *iv = g_variant_get_child_value(parameters, 0);
+        GVariant *rv = g_variant_get_child_value(parameters, 1);
+        guint32 r = g_variant_get_uint32(rv);
+        printf("closed %d (%s)\n",
+                g_variant_get_uint32(iv),
+                (r == 1 ? "expired"
+                 : r == 2 ? "dismissed"
+                 : r == 3 ? "closed"
+                 : "unknown reason"));
+        g_variant_unref(iv);
+        g_variant_unref(rv);
+    } else if (!strcmp(signal_name, "ActionInvoked")) {
+        GVariant *iv = g_variant_get_child_value(parameters, 0);
+        GVariant *av = g_variant_get_child_value(parameters, 1);
+        printf("invoked %d %s\n",
+                g_variant_get_uint32(iv),
+                g_variant_get_string(av, NULL));
+        g_variant_unref(iv);
+        g_variant_unref(av);
+    } else {
+        printf("unknown signal %s emitted\n", signal_name);
+    }
+    return 0;
+}
+
+extern int listen_for_signals() {
+    return listen(connect(), listen_callback, NULL);
+}

@@ -6,7 +6,7 @@ notcat \- print notifications
 [\fB\-h\fR | \fB\-\-help\fR]
 .br
 .B notcat
-[\fBclose\fR \fIID\fR | \fBgetcapabilities\fR | \fBgetserverinfo\fR]
+[\fBclose\fR \fIID\fR | \fBgetcapabilities\fR | \fBgetserverinfo\fR | \fBlisten\fR]
 .br
 .B notcat send
 [\fB-aAchiItu\fR \fIVALUE\fR]... [\fB-p\fR] [\fB--\fR] [\fISUMMARY\fR]
@@ -198,6 +198,10 @@ Get the capabilities of the notification server.
 .TP
 \fBgetserverinfo\fR
 Get basic information about the notification server.
+.TP
+\fBlisten\fR
+Listen for signals from the notification server and print them as
+they arrive.
 .TP
 \fBsend\fR
 Send a notification to the server.
