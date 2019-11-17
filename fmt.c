@@ -102,14 +102,7 @@ static void put_hint(buffer *buf, const NLNote *n, const char *name) {
     char *hs;
     if (!(hs = nl_get_hint_as_string(n, name)))
         return;
-
-    if (nl_get_hint_type(n, name) == HINT_TYPE_STRING) {
-        const char *s;
-        nl_get_string_hint(n, name, &s);
-        put_str(buf, s);
-    } else {
-        put_str(buf, hs);
-    }
+    put_str(buf, hs);
     free(hs);
 }
 
