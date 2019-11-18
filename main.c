@@ -180,7 +180,7 @@ void on_close(const NLNote *n) {
     if (rc == 0 && on_empty_opt) {
         current_event = "empty";
         if (!strcmp(on_empty_opt, "echo") && !shell_run_opt) {
-            printf("\n");
+            print_note(NULL);
         } else if (*on_empty_opt) {
             run_cmd(on_empty_opt, NULL);
         }

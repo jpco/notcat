@@ -60,8 +60,8 @@ Urgency; either "LOW", "NORMAL", or "CRITICAL"
 \fB%n\fR
 Type of
 .B notcat
-event (i.e., which subcommand is being called); either "notify" or
-"close"
+event (i.e., which subcommand is being called); either "notify",
+"close", or "empty".
 .TP
 \fB%c\fR
 Category; often of the form \fIclass\fR.\fIspecific\fR, but may be
@@ -180,9 +180,10 @@ Run the command
 whenever the last notification is closed, and no more notifications
 remain.
 The command is invoked via \fBexecve\fR.
-Unlike the \fB\-\-on\-notify\fR and \fB\-\-on\-close\fR, since
-the \fB\-\-on\-empty\fR event isn't associated with any particular
-notification, it is run without arguments.
+Because \fB\-\-on\-empty\fR isn't associated with any particular
+notification, all
+.I FORMAT
+arguments except for \fB%n\fR interpolate to the empty string.
 .IP
 If not provided, then \fBnotcat\fR's behavior is to do nothing.
 .TP

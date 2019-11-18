@@ -153,15 +153,16 @@ extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
         case PCT:
             switch (*c) {
             case 'i':
-                put_uint(buf, n->id);
+                if (n) put_uint(buf, n->id);
                 break;
             case 'a':
-                put_str(buf, (n->appname == NULL ? "" : n->appname));
+                if (n && n->appname) put_str(buf, n->appname);
                 break;
             case 's':
-                put_str(buf, (n->summary == NULL ? "" : n->summary));
+                if (n && n->summary) put_str(buf, n->summary);
                 break;
             case 'B':
+                if (!n) break;
                 if (body == NULL) {
                     body = (n->body == NULL ? "" : malloc(1 + strlen(n->body)));
                     fmt_body(n->body, body);
@@ -169,10 +170,10 @@ extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
                 put_str(buf, body);
                 break;
             case 't':
-                put_int(buf, n->timeout);
+                if (n) put_int(buf, n->timeout);
                 break;
             case 'u':
-                put_urgency(buf, n->urgency);
+                if (n) put_urgency(buf, n->urgency);
                 break;
             case 'c':
                 put_hint(buf, n, "category");
@@ -215,7 +216,7 @@ extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
         break;
     }
 
-    if (body != NULL && n->body != NULL)
+    if (body != NULL && n && n->body != NULL)
         free(body);
 }
 

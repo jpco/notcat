@@ -57,7 +57,7 @@ extern void print_note(const NLNote *n) {
 
 extern void run_cmd(char *cmd, const NLNote *n) {
     size_t prefix_len = (shell_run_opt ? 4 : 1);
-    size_t fmt_len = (use_env_opt || n == NULL ? 0 : fmt_string_opt_len);
+    size_t fmt_len = (use_env_opt ? 0 : fmt_string_opt_len);
 
     char **cmd_argv = malloc(sizeof(char *)
             * (1 + prefix_len + fmt_len));
