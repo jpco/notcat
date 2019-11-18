@@ -189,8 +189,7 @@ void on_close(const NLNote *n) {
 }
 
 void on_replace(const NLNote *n) {
-    current_event = "notify";
-    print_note(n);
+    on_notify(n);
 }
 
 int main(int argc, char **argv) {
