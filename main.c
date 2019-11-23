@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
         return listen_for_signals();
     }
     if (argc > 1 && !strcmp(argv[1], "invoke")) {
-        if (argc != 4) usage(argv[0], 2);
+        if (argc != 3 && argc != 4) usage(argv[0], 2);
         return invoke_action(argc - 2, argv + 2);
     }
 

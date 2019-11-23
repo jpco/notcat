@@ -520,9 +520,11 @@ extern int invoke_action(int argc, char **argv) {
     if (id < 0 || id > 65536)
         return 11;
 
+    char *key = (argc > 1 ? argv[1] : "default");
+
     GDBusProxy *proxy = make_proxy(connect());
     GVariant *result = call(proxy, "InvokeAction",
-                            g_variant_new("(us)", id, argv[1]));
+                            g_variant_new("(us)", id, key));
 
     return (result == NULL);
 }
