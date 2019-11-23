@@ -74,6 +74,7 @@ static GVariant *call(GDBusProxy *proxy, char *name, GVariant *args) {
             NULL,
             &error);
     if (error != NULL) {
+        // fprintf(stderr, "%s\n", error->message);
         g_error_free(error);
         return NULL;
     }
@@ -508,4 +509,20 @@ static int listen_callback(const gchar *signal_name,
 
 extern int listen_for_signals() {
     return listen(connect(), listen_callback, NULL);
+}
+
+extern int invoke_action(int argc, char **argv) {
+    char *end;
+    char *idarg = argv[0];
+    long id = strtol(idarg, &end, 10);
+    if (*idarg == '\0' || *end != '\0')
+        return 10;
+    if (id < 0 || id > 65536)
+        return 11;
+
+    GDBusProxy *proxy = make_proxy(connect());
+    GVariant *result = call(proxy, "InvokeAction",
+                            g_variant_new("(us)", id, argv[1]));
+
+    return (result == NULL);
 }

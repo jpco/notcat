@@ -22,10 +22,10 @@
 
 #include "notcat.h"
 
-static char *BASE_capabilities[] = {"actions", NULL, NULL, NULL};
+static char *BASE_capabilities[] = {"actions", "x-remote-actions", NULL, NULL};
 char **capabilities = BASE_capabilities;
 
-static size_t caps_len = 1;
+static size_t caps_len = 2;
 static size_t caps_cap = 4;
 
 static void grow_capabilities() {

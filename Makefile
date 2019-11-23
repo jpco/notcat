@@ -23,7 +23,7 @@ notcat 		: ${CSRC} libnotlib.a
 	${CC} -o notcat ${DEFINES} ${CFLAGS} ${CSRC} -L./notlib -lnotlib ${LIBS} ${INCLUDES}
 
 libnotlib.a	:
-	$(MAKE) static -C notlib
+	$(MAKE) static -C notlib DEFINES=-DNL_REMOTE_ACTIONS=1
 
 install		: notcat
 	$(MKDIR_P) $(bindir)

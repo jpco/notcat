@@ -212,6 +212,10 @@ int main(int argc, char **argv) {
         if (argc != 2) usage(argv[0], 2);
         return listen_for_signals();
     }
+    if (argc > 1 && !strcmp(argv[1], "invoke")) {
+        if (argc != 4) usage(argv[0], 2);
+        return invoke_action(argc - 2, argv + 2);
+    }
 
     notcat_getopt(argc, argv);
     if (use_env_opt) {
