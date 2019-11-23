@@ -106,10 +106,18 @@ static void put_hint(buffer *buf, const NLNote *n, const char *name) {
     free(hs);
 }
 
+static void put_action(buffer *buf, const NLNote *n, const char *key) {
+    const char *an;
+    if (!(an = nl_action_name(n, key)))
+        return;
+    put_str(buf, an);
+}
+
 #define NORMAL      0
 #define PCT         1
 #define PCTPAREN    2
 #define HINT        3
+#define ACTION      4
 
 extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
     const char *c;
@@ -136,6 +144,24 @@ extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
             }
             break;
         }
+        case ACTION: {
+            char *c2;
+            ++c;
+            for (c2 = (char *)c; *c2 && *c2 != ')'; c2++)
+                ;
+            if (!*c2) {
+                put_str(buf, "%(A:");
+                put_str(buf, c);
+                c = c2 - 1;
+            } else {
+                *c2 = '\0';
+                put_action(buf, n, c);
+                *c2 = ')';
+                c = c2;
+                state = NORMAL;
+            }
+            break;
+        }
         case PCTPAREN:
             switch (*c) {
             case 'h':
@@ -143,6 +169,12 @@ extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
                     state = HINT;
                     break;
                 }
+            case 'A':
+                if (c[1] == ':') {
+                    state = ACTION;
+                    break;
+                }
+            // TODO: allow things like '%(s)'
             default:
                 put_str(buf, "%(");
                 put_char(buf, *c);
