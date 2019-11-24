@@ -43,8 +43,8 @@ static void usage(char *arg0, int code) {
 
     fprintf(stderr, "Usage:\n"
             "  %s [-h | --help]\n"
-            "  %s [send <opts> | close <id> | getcapabilities | getserverinfo\n"
-            "  %s   | listen]\n"
+            "  %s [send <opts> | getcapabilities | getserverinfo | listen]\n"
+            "  %s [close <id> | invoke <id> [<key>]]\n"
             "  %s [-se] [-t <timeout>] [--capabilities=<cap1>,<cap2>...] \\\n"
             "  %s [--on-notify=<cmd>] [--on-close=<cmd>] [--on-empty=<cmd>] \\\n"
             "  %s [--] [format]...\n"
@@ -64,7 +64,7 @@ static void usage(char *arg0, int code) {
             "\n"
             "For more detailed information and options for the 'send' subcommand,\n"
             "consult `man 1 notcat`.\n",
-           arg0, arg0, spaces, arg0, spaces, spaces);
+           arg0, arg0, arg0, arg0, spaces, spaces);
 
     exit(code);
 }

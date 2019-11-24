@@ -6,7 +6,10 @@ notcat \- print notifications
 [\fB\-h\fR | \fB\-\-help\fR]
 .br
 .B notcat
-[\fBclose\fR \fIID\fR | \fBgetcapabilities\fR | \fBgetserverinfo\fR | \fBlisten\fR]
+[\fBgetcapabilities\fR | \fBgetserverinfo\fR | \fBlisten\fR]
+.br
+.B notcat
+[\fBclose\fR \fIID\fR | \fBinvoke\fR \fIID\fR [\fIKEY\fR]]
 .br
 .B notcat send
 [\fB-aAchiItu\fR \fIVALUE\fR]... [\fB-p\fR] [\fB--\fR] [\fISUMMARY\fR]
@@ -70,6 +73,10 @@ simply \fIclass\fR
 \fB%(h:\fINAME\fB)\fR
 Hint value with the given
 .I NAME
+.TP
+\fB%(A:\fIKEY\fB)\fR
+Action name with the given
+.I KEY
 .PP
 If no
 .I FORMAT
@@ -202,6 +209,14 @@ Existing commands are:
 \fBclose\fR \fIID\fR
 Close the notification with the given \fIID\fR.
 .TP
+\fBinvoke\fR \fIID\fR [\fIKEY\fR]
+Invoke the action with the key \fIKEY\fR on the notification with the
+given \fIID\fR.
+If no \fIKEY\fR is provided, "default" is used.
+Unfortunately, \fBinvoke\fR will only work with notification servers
+which advertise the \fBx-remote-actions\fR capability, which will
+probably only ever be \fBnotcat\fR.
+.TP
 \fBgetcapabilities\fR
 Get the capabilities of the notification server.
 .TP
@@ -317,19 +332,14 @@ Both
 and this manual page are released under the GNU General Public
 License, version 3+.
 .SH ERRATA
-Actions, markup, categories, and links are not yet supported.
-Moreover,
-.B notcat
-lies (!) and claims that actions are supported.
+Markup and links are not yet supported.
+.PP
+Actions are supported, but not very well.
 .PP
 Some capabilities will likely never be supported.
 In particular, the \fBbody-images\fR, \fBicon-multi\fR,
 \fBicon-static\fR, and \fBsound\fR capabilities are outside the
 intended design of \fBnotcat\fR.
-.PP
-Only arbitrary hints of type string, int, boolean, or byte are
-understood.
-More complex types of hints can only be supported specially.
 .SH SEE ALSO
 \fBnotify\-send\fR\|(1)
 .SH STANDARDS

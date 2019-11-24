@@ -2,9 +2,9 @@
 
 For when you just want something to print, or run, whenever notifications arrive.  Much like statnot, but even simpler (and significantly zippier).
 
-Not ready for the limelight just yet.
+Still a bit rough.
 
-notcat is built using the [notlib](https://github.com/jpco/notlib) library.
+notcat is built on top of the [notlib](https://github.com/jpco/notlib) library.
 
 
 ## Downloading && installing
@@ -71,12 +71,7 @@ Supported format sequences are:
 %c          category
 %n          type of event
 %(h:NAME)   hint by NAME
-```
-
-Planned future sequences are:
-
-```
-%(A:key)    actions (these will probably be exposed in other ways as well)
+%(A:KEY)    action by KEY
 ```
 
 When the `-e` flag is *not* set, format arguments are filled-in and passed 1:1 to executed subcommands.  For example, when a notification is sent to notcat executed as
@@ -117,7 +112,7 @@ NOTE_URGENCY
 NOTE_TIMEOUT
 ```
 
-Generic hints are not yet supported in environment variables.
+Actions and generic hints are not yet supported in environment variables.
 
 Example usage:
 
@@ -142,6 +137,8 @@ $ notcat -e --on-notify=./post.sh
 
  - `close <ID>`: Close the notification with the given ID.
 
+ - `invoke <ID> <KEY>`: Invoke the action with the given key on the notification with the given ID.  Will not work with just about any notification server other than notcat.
+
  - `getcapabilities`: Get the capabilities of the notification server.
 
  - `getserverinfo`: Get basic information about the notification server.
@@ -155,4 +152,4 @@ $ notcat -e --on-notify=./post.sh
 
  - more format sequences and environment variables
  - markup "support", as far as it will go
- - actions
+ - better error handling -- printing errors, for instance, would be useful
