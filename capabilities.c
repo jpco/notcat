@@ -22,7 +22,7 @@
 
 #include "notcat.h"
 
-static char *BASE_capabilities[] = {"actions", "x-remote-actions", NULL, NULL};
+static char *BASE_capabilities[] = {"actions", "x-notlib-remote-actions", NULL, NULL};
 char **capabilities = BASE_capabilities;
 
 static size_t caps_len = 2;
