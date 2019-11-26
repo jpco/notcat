@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "notcat.h"
 
@@ -40,6 +41,15 @@ static void grow_capabilities() {
 }
 
 extern void add_capability(char *cap) {
+    size_t i;
+    for (i = 0; cap[i]; i++) {
+        if (!strchr("abcdefghijklmnopqrstuvwxyz0123456789-", cap[i])) {
+            fprintf(stderr, "Capabilities must be made up of lower-case "
+                            "alphanumeric characters or dashes\n");
+            exit(2);
+        }
+    }
+
     char **curr;
     for (curr = capabilities; *curr != NULL; curr++) {
         if (!strcmp(*curr, cap))
