@@ -152,4 +152,6 @@ $ notcat -e --on-notify=./post.sh
 
  - more format sequences and environment variables
  - markup "support", as far as it will go
+    - starting with *stripping* all markup (and advertising 'body-markup')
+    - then allow flags to format markup
  - better error handling -- printing errors, for instance, would be useful
