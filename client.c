@@ -523,8 +523,29 @@ extern int invoke_action(int argc, char **argv) {
     char *key = (argc > 1 ? argv[1] : "default");
 
     GDBusProxy *proxy = make_proxy(connect());
-    GVariant *result = call(proxy, "InvokeAction",
-                            g_variant_new("(us)", id, key));
+    GVariant *result = call(proxy, "GetCapabilities", NULL);
+    if (result == NULL)
+        return 1;
+    result = g_variant_get_child_value(result, 0);
 
+    int got_cap = 0;
+    size_t i, len;
+    const gchar **cs = g_variant_get_strv(result, &len);
+    for (i = 0; i < len; i++) {
+        if (!strcmp(cs[i], "x-notlib-remote-actions")) {
+            got_cap = 1;
+            break;
+        }
+    }
+    if (cs) g_free(cs);
+    g_variant_unref(result);
+
+    if (!got_cap) {
+        fprintf(stderr, "Notification server does not support remote "
+                        "actions\n");
+        return 1;
+    }
+
+    result = call(proxy, "InvokeAction", g_variant_new("(us)", id, key));
     return (result == NULL);
 }
