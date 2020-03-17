@@ -32,7 +32,7 @@ struct _buffer {
 static void check_buffer_size(buffer *buf, size_t cn) {
     ptrdiff_t csz = buf->curr - buf->start;
     if (csz + cn > buf->len) {
-        ptrdiff_t nsz = csz * 2;
+        ptrdiff_t nsz = (csz == 0 ? 1 : csz * 2);
         while (nsz < (csz + cn)) {
             nsz = nsz * 2;
         }
