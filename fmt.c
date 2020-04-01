@@ -21,24 +21,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "notlib/notlib.h"
 #include "notcat.h"
 
-/*
- * Proposed format syntax (incomplete)
- *
- * id               %i
- * app_name         %a
- * summary          %s
- * body             %B          - also %(B:30) for 'first 30 chars of b'?
- * actions          ???         - TODO - %(A:key)?
- * arbitrary hints  %(h:key)
- * category         %c
- * expire_timeout   %t
- * urgency          %u
- */
-
+format fmt;
 char *current_event = "ERROR";
 
 extern char *str_urgency(const enum NLUrgency u) {
@@ -119,140 +107,57 @@ static void put_action(buffer *buf, const NLNote *n, const char *key) {
 #define HINT        3
 #define ACTION      4
 
-extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n) {
-    const char *c;
+extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
+    size_t i;
     char *body = NULL;
-    char state = NORMAL;
 
-    for (c = fmt; *c; c++) {
-        switch (state) {
-        case HINT: {
-            char *c2;
-            ++c;
-            for (c2 = (char *)c; *c2 && *c2 != ')'; c2++)
-                ;
-            if (!*c2) {
-                put_str(buf, "%(h:");
-                put_str(buf, c);
-                c = c2 - 1;
-            } else {
-                *c2 = '\0';
-                put_hint(buf, n, c);
-                *c2 = ')';
-                c = c2;
-                state = NORMAL;
-            }
+    for (i = 0; i < fmt->len; i++) {
+        fmt_item *item = &(fmt->items[i]);
+        switch (item->type) {
+        case 'i':
+            if (n) put_uint(buf, n->id);
             break;
-        }
-        case ACTION: {
-            char *c2;
-            ++c;
-            for (c2 = (char *)c; *c2 && *c2 != ')'; c2++)
-                ;
-            if (!*c2) {
-                put_str(buf, "%(A:");
-                put_str(buf, c);
-                c = c2 - 1;
-            } else {
-                *c2 = '\0';
-                put_action(buf, n, c);
-                *c2 = ')';
-                c = c2;
-                state = NORMAL;
-            }
+        case 'a':
+            if (n && n->appname) put_str(buf, n->appname);
             break;
-        }
-        case PCTPAREN:
-            switch (*c) {
-            case 'h':
-                if (c[1] == ':') {
-                    state = HINT;
-                    break;
-                }
-            case 'A':
-                if (c[1] == ':') {
-                    state = ACTION;
-                    break;
-                }
-            // TODO: allow things like '%(s)'
-            default:
-                put_str(buf, "%(");
-                put_char(buf, *c);
-                state = NORMAL;
-                break;
-            }
+        case 's':
+            if (n && n->summary) put_str(buf, n->summary);
             break;
-        case PCT:
-            switch (*c) {
-            case 'i':
-                if (n) put_uint(buf, n->id);
-                break;
-            case 'a':
-                if (n && n->appname) put_str(buf, n->appname);
-                break;
-            case 's':
-                if (n && n->summary) put_str(buf, n->summary);
-                break;
-            case 'B':
-                if (!n) break;
-                if (body == NULL) {
-                    body = (n->body == NULL ? "" : malloc(1 + strlen(n->body)));
-                    fmt_body(n->body, body);
-                }
-                put_str(buf, body);
-                break;
-            case 't':
-                if (n) put_int(buf, n->timeout);
-                break;
-            case 'u':
-                if (n) put_urgency(buf, n->urgency);
-                break;
-            case 'c':
-                put_hint(buf, n, "category");
-                break;
-            case 'n':
-                put_str(buf, current_event);
-                break;
-            case '%':
-                put_char(buf, '%');
-                break;
-            case '(':
-                state = PCTPAREN;
-                break;
-            default:
-                put_char(buf, '%');
-                put_char(buf, *c);
+        case 'B':
+            if (!n) break;
+            if (body == NULL) {
+                body = (n->body == NULL ? "" : malloc(1 + strlen(n->body)));
+                fmt_body(n->body, body);
             }
-            if (state == PCT) {
-                state = NORMAL;
-            }
+            put_str(buf, body);
             break;
-        case NORMAL:
-            switch (*c) {
-            case '%':
-                state = PCT;
-                break;
-            default:
-                put_char(buf, *c);
-            }
+        case 't':
+            if (n) put_int(buf, n->timeout);
             break;
+        case 'u':
+            if (n) put_urgency(buf, n->urgency);
+            break;
+        case 'c':
+            put_hint(buf, n, "category");
+        case 'n':
+            put_str(buf, current_event);
+            break;
+        case 'A':
+            put_action(buf, n, item->str);
+            break;
+        case 'h':
+            put_hint(buf, n, item->str);
+            break;
+        case ITEM_TYPE_LITERAL:
+            put_str(buf, item->str);
+            break;
+        default:
+            exit(59);
         }
     }
-
-    switch (state) {
-    case PCT:
-        put_char(buf, '%');
-        break;
-    case PCTPAREN:
-        put_str(buf, "%(");
-        break;
-    }
-
-    if (body != NULL && n && n->body != NULL)
-        free(body);
 }
 
-extern char *fmt_note(const char *fmt, const NLNote *n) {
+extern char *fmt_note(fmt_term *fmt, const NLNote *n) {
     buffer *buf = new_buffer(BUF_LEN);
     fmt_note_buf(buf, fmt, n);
     return dump_buffer(buf);

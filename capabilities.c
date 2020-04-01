@@ -63,17 +63,12 @@ extern void add_capability(char *cap) {
 }
 
 extern void fmt_capabilities() {
-    size_t i;
-    char pct = 0;
-    for (i = 0; i < fmt_string_opt_len; i++) {
-        char *c;
-        for (c = fmt_string_opt[i]; *c; c++) {
-            if (pct) {
-                if (*c == 'B') {
-                    add_capability("body");
-                }
-            } else if (*c == '%') {
-                pct = 1;
+    size_t i, j;
+    for (i = 0; i < fmt.len; i++) {
+        for (j = 0; j < fmt.terms[i].len; j++) {
+            if (fmt.terms[i].items[j].type == 'B') {
+                add_capability("body");
+                break;
             }
         }
     }

@@ -28,25 +28,17 @@
 #include "notlib/notlib.h"
 #include "notcat.h"
 
-static char *default_fmt_string_opt[] = {"%s"};
-char **fmt_string_opt = default_fmt_string_opt;
-size_t fmt_string_opt_len = 1;
 int shell_run_opt = 0;
-int use_env_opt = 0;
+int use_env_opt   = 0;
 
 extern void print_note(const NLNote *n) {
     buffer *buf = new_buffer(BUF_LEN);
 
-    const char *fmt_override = NULL;
-    if (nl_get_string_hint(n, "format", &fmt_override)) {
-        fmt_note_buf(buf, fmt_override, n);
-    } else {
-        size_t fmt_idx;
-        for (fmt_idx = 0; fmt_idx < fmt_string_opt_len; fmt_idx++) {
-            fmt_note_buf(buf, fmt_string_opt[fmt_idx], n);
-            if (fmt_idx < fmt_string_opt_len - 1)
-                put_char(buf, ' ');
-        }
+    size_t i;
+    for (i = 0; i < fmt.len; i++) {
+        fmt_note_buf(buf, &fmt.terms[i], n);
+        if (i < fmt.len - 1)
+            put_char(buf, ' ');
     }
 
     put_char(buf, '\n');
@@ -57,10 +49,9 @@ extern void print_note(const NLNote *n) {
 
 extern void run_cmd(char *cmd, const NLNote *n) {
     size_t prefix_len = (shell_run_opt ? 4 : 1);
-    size_t fmt_len = (use_env_opt ? 0 : fmt_string_opt_len);
+    size_t fmt_len    = (use_env_opt   ? 0 : fmt.len);
 
-    char **cmd_argv = malloc(sizeof(char *)
-            * (1 + prefix_len + fmt_len));
+    char **cmd_argv = malloc(sizeof(char *) * (1 + prefix_len + fmt_len));
 
     static char *sh = NULL;
     if (!sh && !(sh = getenv("SHELL")))
@@ -77,7 +68,7 @@ extern void run_cmd(char *cmd, const NLNote *n) {
 
     size_t i;
     for (i = 0; i < fmt_len; i++) {
-        cmd_argv[i+prefix_len] = fmt_note(fmt_string_opt[i], n);
+        cmd_argv[i+prefix_len] = fmt_note(&fmt.terms[i], n);
     }
     cmd_argv[fmt_len + prefix_len] = NULL;
 

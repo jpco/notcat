@@ -35,13 +35,36 @@ extern void put_strn(buffer *, size_t, const char *);
 extern void put_str (buffer *, const char *);
 extern void put_char(buffer *, char);
 
+// parse.c
+
+#define ITEM_TYPE_LITERAL   128
+
+typedef struct _fmt_item {
+    unsigned char type;
+    char *str; 
+} fmt_item;
+
+typedef struct _fmt_term {
+    size_t len;
+    fmt_item *items;
+} fmt_term;
+
+typedef struct _format {
+    size_t len;
+    fmt_term *terms;
+} format;
+
+extern format fmt;
+
+extern format parse_format(size_t len, char **str);
+
 // fmt.c
 
 extern char *current_event;
 
 extern char *str_urgency(const enum NLUrgency urgency);
-extern void fmt_note_buf(buffer *buf, const char *fmt, const NLNote *n);
-extern char *fmt_note(const char *fmt, const NLNote *n);
+extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n);
+extern char *fmt_note(fmt_term *fmt, const NLNote *n);
 
 // run.c
 
