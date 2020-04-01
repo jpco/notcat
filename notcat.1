@@ -88,6 +88,10 @@ If the
 .B \-e
 argument is supplied, then instead of the formatted arguments, subcommands are invoked with the following environment variables set to the appropriate values:
 .TP
+$\fINOTCAT_EVENT\fR
+Type of notcat event (i.e., which subcommand is being called); either
+"notify", "close", or "empty".
+.TP
 $\fINOTE_ID\fR
 Notification ID
 .TP
@@ -106,10 +110,6 @@ simply \fIclass\fR
 .TP
 $\fINOTE_URGENCY\fR
 Urgency; either 'LOW', 'NORMAL', or 'CRITICAL'
-.TP
-$\fINOTCAT_EVENT\fR
-Type of notcat event (i.e., which subcommand is being called); either
-"notify", "close", or "empty".
 .TP
 $\fINOTE_TIMEOUT\fR
 Expiration timeout in milliseconds; 0 indicates "no timeout", and -1

@@ -35,6 +35,9 @@ static char *on_notify_opt = "echo";
 static char *on_close_opt = NULL;
 static char *on_empty_opt = NULL;
 
+static size_t default_fmt_opt_len = 1;
+static char *default_fmt_opt[] = {"%s"};
+
 static void usage(char *arg0, int code) {
     size_t alen = strlen(arg0);
     char spaces[alen + 1];
@@ -70,8 +73,8 @@ static void usage(char *arg0, int code) {
 }
 
 static void notcat_getopt(int argc, char **argv) {
-    size_t fmt_string_opt_len = 0, fo_idx = 0;
-    char **fmt_string_opt = NULL;
+    size_t fmt_opt_len = 0, fo_idx = 0;
+    char **fmt_opt = NULL;
     char *arg0 = argv[0];
 
     int av_idx;
@@ -150,11 +153,16 @@ static void notcat_getopt(int argc, char **argv) {
     }
 
     if (fo_idx > 0) {
-        fmt_string_opt_len = fo_idx;
-        fmt_string_opt = argv;
+        fmt_opt_len = fo_idx;
+        fmt_opt = argv;
     }
 
-    fmt = parse_format(fmt_string_opt_len, fmt_string_opt);
+    if (fmt_opt_len == 0) {
+        fmt_opt_len = default_fmt_opt_len;
+        fmt_opt     = default_fmt_opt;
+    }
+
+    fmt = parse_format(fmt_opt_len, fmt_opt);
 }
 
 static uint32_t rc = 0;

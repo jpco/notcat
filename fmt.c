@@ -139,6 +139,7 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
             break;
         case 'c':
             put_hint(buf, n, "category");
+            break;
         case 'n':
             put_str(buf, current_event);
             break;
