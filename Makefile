@@ -36,4 +36,4 @@ install		: notcat
 
 clean		:
 	$(MAKE) clean -C notlib
-	rm *.o notcat test
+	rm -f *.o notcat test
