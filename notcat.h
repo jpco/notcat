@@ -37,17 +37,22 @@ extern void put_char(buffer *, char);
 
 // parse.c
 
-#define ITEM_TYPE_LITERAL   128
+#define ITEM_TYPE_LITERAL       128  /* data held in item 'str' */
+#define ITEM_TYPE_CONDITIONAL   129  /* "if" held in item 'chr', "then" held in item 'subterm' */
 
-typedef struct _fmt_item {
-    unsigned char type;
-    char *str; 
-} fmt_item;
+typedef struct _fmt_item fmt_item;
 
 typedef struct _fmt_term {
     size_t len;
     fmt_item *items;
 } fmt_term;
+
+struct _fmt_item {
+    unsigned char type;
+    char *str;
+    char chr;
+    fmt_term subterm;
+};
 
 typedef struct _format {
     size_t len;

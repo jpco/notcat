@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "notcat.h"
 
@@ -62,14 +63,26 @@ extern void add_capability(char *cap) {
     capabilities[caps_len++] = cap;
 }
 
+static bool body_term(fmt_term t) {
+    size_t i;
+    for (i = 0; i < t.len; i++) {
+        switch (t.items[i].type) {
+        case 'B':
+            return true;
+        case ITEM_TYPE_CONDITIONAL:
+            if (body_term(t.items[i].subterm))
+                return true;
+        }
+    }
+    return false;
+}
+
 extern void fmt_capabilities() {
-    size_t i, j;
+    size_t i;
     for (i = 0; i < fmt.len; i++) {
-        for (j = 0; j < fmt.terms[i].len; j++) {
-            if (fmt.terms[i].items[j].type == 'B') {
-                add_capability("body");
-                break;
-            }
+        if (body_term(fmt.terms[i])) {
+            add_capability("body");
+            break;
         }
     }
 }

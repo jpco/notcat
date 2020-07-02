@@ -64,7 +64,7 @@ Urgency; either "LOW", "NORMAL", or "CRITICAL"
 Type of
 .B notcat
 event (i.e., which subcommand is being called); either "notify",
-"close", or "empty".
+"close", or "empty"
 .TP
 \fB%c\fR
 Category; often of the form \fIclass\fR.\fIspecific\fR, but may be
@@ -83,14 +83,69 @@ If no
 arguments are provided, then
 .B notcat
 defaults to '\fB%s\fR'.
+.SS CONDITIONALS
+.PP
+In addition to the above-listed format sequences,
+.B notcat
+supports \fIformat conditionals\fR.
+These take the form
+.IP
+\fB%(?\fIK\fB:\fIEXPR\fB)\fR,
+.PP
+which tests if the notification's value of
+.I K
+exists and is non-empty or non-default, and if so, formats \fIEXPR\fR.
+.I EXPR
+may include more conditionals or format sequences.
+.PP
+Currently implemented behavior around different keys include
+.TP
+.B a
+Formats
+.I EXPR
+if the notification's appname is non-empty.
+.TP
+.B s
+Formats
+.I EXPR
+if the notification's summary is non-empty.
+.TP
+.B B
+Formats
+.I EXPR
+if the notification has a body and it is non-empty.
+.TP
+.B t
+Formats
+.I EXPR
+if the notification's timeout is set to a value other than -1.
+.TP
+.B c
+Formats
+.I EXPR
+if the notification has a category set.
+.TP
+.B u
+Formats
+.I EXPR
+if the notification's urgency is set to a value other than \fBNORMAL\fR.
+.PP
+In all cases, if the notification event has no associated
+notification (like with \fB--on-empty\fR,) then the conditionals will
+be false.
+.SS ENVIRONMENT VARIABLES
 .PP
 If the
 .B \-e
-argument is supplied, then instead of the formatted arguments, subcommands are invoked with the following environment variables set to the appropriate values:
+argument is supplied, then instead of the formatted arguments,
+subcommands are invoked with the following environment variables set
+to the appropriate values:
 .TP
 $\fINOTCAT_EVENT\fR
-Type of notcat event (i.e., which subcommand is being called); either
-"notify", "close", or "empty".
+Type of
+.B notcat
+event (i.e., which subcommand is being called); either "notify",
+"close", or "empty".
 .TP
 $\fINOTE_ID\fR
 Notification ID
@@ -216,7 +271,9 @@ given \fIID\fR.
 If no \fIKEY\fR is provided, "default" is used.
 Unfortunately, \fBinvoke\fR will only work with notification servers
 which advertise the \fBx-notlib-remote-actions\fR capability, which will
-probably only ever be \fBnotcat\fR.
+probably only ever be 
+.B notcat
+itself.
 .TP
 \fBgetcapabilities\fR
 Get the capabilities of the notification server.
@@ -335,7 +392,8 @@ License, version 3+.
 .SH ERRATA
 Markup and links are not yet supported.
 .PP
-Actions are supported, but not very well.
+Format sequences lack the escaping facilities to allow arbitrary text
+in things like conditionals.
 .PP
 Some capabilities will likely never be supported.
 In particular, the \fBbody-images\fR, \fBicon-multi\fR,

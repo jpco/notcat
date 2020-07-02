@@ -4,12 +4,12 @@ For when you just want something to print, or run, whenever notifications arrive
 
 Still a bit rough.
 
-notcat is built on top of the [notlib](https://github.com/jpco/notlib) library.
+Notcat is built on top of the [notlib](https://github.com/jpco/notlib) library.
 
 
 ## Downloading && installing
 
-notcat uses git submodules.  To properly clone and build:
+Notcat uses git submodules.  To properly clone and build:
 
 1. `git clone https://github.com/jpco/notcat && cd notcat`
 2. `git submodule init`
@@ -49,14 +49,11 @@ Options:
 
 ## --on-notify, --on-close, --on-empty
 
-notcat can execute arbitrary subcommands when notifications are received and closed via the `--on-notify` and `--on-close` flags, respectively.  When the last notification is closed, the `--on-empty` subcommand is run after `--on-close`.
-
-At present, the commands invoked by `--on-notify`, `--on-close`, and `--on-empty` are blocking -- for notcat, as well as anything that sends a notification while the commands are running (yikes!)
-
+Notcat can execute arbitrary subcommands when notifications are received and closed via the `--on-notify` and `--on-close` flags, respectively.  When the last notification is closed, the `--on-empty` subcommand is run after `--on-close`.
 
 ## Format strings
 
-notcat is configurable via format strings (much like the standard `date` command).  It accepts any number of format string arguments.
+Notcat is configurable via format strings (similar to the standard `date` command).  It accepts any number of format string arguments.
 
 Supported format sequences are:
 
@@ -94,7 +91,16 @@ $SHELL -c /bin/echo notcat '<summary>' '<urgency> <body>'
 
 In this case, the subcommand isn't very useful (simply echoing an empty line each time).  Figuring out how shells' `-c` flag works is left as an exercise for the reader. (The 'notcat' in the above is hard-coded, setting the `$0` of the executed subshell.)
 
-The `--on-empty` subcommand, unlike the other two, takes no arguments at all, since it's not associated with any particular notification.
+
+### Format conditionals
+
+Notcat can key off of the presence (and non-defaultness) of certain notification fields without having to print them, using format conditional syntax, illustrated here:
+
+```
+$ notcat '%s%(?B: - )%B'
+```
+
+When notcat, invoked with this format argument, receives a notification with a body, it will display `summary - body`.  When it receives a notification with no body, it will simply display `summary`.
 
 
 ## Environment variables

@@ -29,6 +29,7 @@
 #define TS_PCT      1
 #define TS_PCTPAREN 2
 #define TS_KV       3
+#define TS_COND     4
 
 static fmt_item make_literal(size_t len, char *s, char c) {
     fmt_item f;
@@ -78,6 +79,38 @@ static fmt_term parse_term(char *str) {
             }
             state = TS_NORMAL;
             break;
+        case TS_COND: {
+            /* cur.type already set in TS_PCTPAREN code */
+            size_t paren_depth = 1;
+            for (c2 = c; *c2; c2++) {
+                switch (*c2) {
+                    case '(': paren_depth++; break;
+                    case ')': paren_depth--; break;
+                }
+                if (!paren_depth) break;
+            }
+            if (!*c2) {
+                /* oops! literal: `%(?x:...` */
+                PUSH_ITEM(make_literal(6, "%%(?%c:", cur.chr));
+                cur.type = ITEM_TYPE_LITERAL;
+                cur.str = malloc(c2 - c + 1);
+                strncpy(cur.str, c, c2 - c);
+                cur.str[c2 - c] = '\0';
+                PUSH_ITEM(cur);
+                state = TS_NORMAL;
+                c = c2 - 1;
+                break;
+            } else {
+                char tmp[c2 - c + 1];
+                strncpy(tmp, c, c2 - c);
+                tmp[c2 - c] = '\0';
+                cur.subterm = parse_term(tmp);
+                PUSH_ITEM(cur);
+                c = c2;
+            }
+            state = TS_NORMAL;
+            break;
+        }
         case TS_PCTPAREN:
             switch (*c) {
             case 'A': case 'h':
@@ -90,6 +123,17 @@ static fmt_term parse_term(char *str) {
                 }
                 c++;
                 state = TS_KV;
+                break;
+            case '?':
+                cur.type = ITEM_TYPE_CONDITIONAL;
+                if (!strchr("asBtcuAh", c[1]) || c[2] != ':') {
+                    PUSH_ITEM(make_literal(4, "%%(?", 0));
+                    state = TS_NORMAL;
+                    break;
+                }
+                cur.chr = c[1];
+                c += 2;
+                state = TS_COND;
                 break;
             case 'i': case 'a': case 's': case 'B':
             case 't': case 'u': case 'c': case 'n':
@@ -132,13 +176,7 @@ static fmt_term parse_term(char *str) {
                 state = TS_NORMAL;
                 break;
             default:
-                /* oops! literal */
-                /* `%x` */
-                /* cur.type = ITEM_TYPE_LITERAL;
-                cur.str = malloc(sizeof(char) * 3);
-                cur.str[0] = '%';
-                cur.str[1] = *c;
-                cur.str[2] = '\0'; */
+                /* oops! literal: `%x` */
                 PUSH_ITEM(make_literal(3, "%%%c", *c));
                 state = TS_NORMAL;
             }
@@ -182,6 +220,8 @@ static fmt_term parse_term(char *str) {
     case TS_KV:
         PUSH_ITEM(make_literal(5, "%%(%c:", cur.type));
         break;
+    case TS_COND:
+        PUSH_ITEM(make_literal(6, "%%(?%c:", cur.chr));
     }
 
     return term;
