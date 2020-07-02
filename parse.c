@@ -38,6 +38,13 @@ static fmt_item make_literal(size_t len, char *s, char c) {
     return f;
 }
 
+#define PUSH_ITEM(expr) \
+    if (term.len == cap) { \
+        cap *= 2; \
+        term.items = realloc(term.items, sizeof(fmt_item) * cap); \
+    } \
+    term.items[term.len++] = (expr);
+
 static fmt_term parse_term(char *str) {
     fmt_term term;
     fmt_item cur;
@@ -48,11 +55,6 @@ static fmt_term parse_term(char *str) {
     term.items = malloc(sizeof(fmt_item) * cap);
 
     for (c = str; *c; c++) {
-        if (term.len == cap) {
-            cap *= 2;
-            term.items = realloc(term.items, sizeof(fmt_item) * cap);
-        }
-
         switch (state) {
         case TS_KV:
             /* cur.type already set in TS_PCTPAREN code */
@@ -60,14 +62,18 @@ static fmt_term parse_term(char *str) {
                 ;
             if (!*c2) {
                 /* oops! literal: `%(x:...` */
-                term.items[term.len++] = make_literal(5, "%%(%d:", cur.type);
+                PUSH_ITEM(make_literal(5, "%%(%c:", cur.type));
+                cur.type = ITEM_TYPE_LITERAL;
+                cur.str = malloc(c2 - c + 1);
+                strncpy(cur.str, c, c2 - c);
+                cur.str[c2 - c] = '\0';
+                PUSH_ITEM(cur);
                 c = c2 - 1;
-                break;
             } else {
                 cur.str = malloc(c2 - c + 1);
                 strncpy(cur.str, c, c2 - c);
                 cur.str[c2 - c] = '\0';
-                term.items[term.len++] = cur;
+                PUSH_ITEM(cur);
                 c = c2;
             }
             state = TS_NORMAL;
@@ -78,7 +84,7 @@ static fmt_term parse_term(char *str) {
                 cur.type = *c;
                 if (c[1] != ':') {
                     /* oops! literal: `%(xx` */
-                    term.items[term.len++] = make_literal(4, "%%(%c", *c);
+                    PUSH_ITEM(make_literal(4, "%%(%c", *c));
                     state = TS_NORMAL;
                     break;
                 }
@@ -93,17 +99,17 @@ static fmt_term parse_term(char *str) {
                     c++;
                     state = TS_NORMAL;
                     cur.str = NULL;
-                    term.items[term.len++] = cur;
+                    PUSH_ITEM(cur);
                     break;
                 default:
                     /* oops! literal: `%(x` */
-                    term.items[term.len++] = make_literal(4, "%%(%c", *c);
+                    PUSH_ITEM(make_literal(4, "%%(%c", *c));
                     state = TS_NORMAL;
                 }
                 break;
             default:
                 /* oops! literal: `%(x` */
-                term.items[term.len++] = make_literal(4, "%%(%c", *c);
+                PUSH_ITEM(make_literal(4, "%%(%c", *c));
                 state = TS_NORMAL;
             }
             break;
@@ -113,7 +119,7 @@ static fmt_term parse_term(char *str) {
             case 't': case 'u': case 'c': case 'n':
                 cur.type = *c;
                 cur.str  = NULL;
-                term.items[term.len++] = cur;
+                PUSH_ITEM(cur);
                 state = TS_NORMAL;
                 break;
             case '(':
@@ -122,7 +128,7 @@ static fmt_term parse_term(char *str) {
             case '%':
                 cur.type = ITEM_TYPE_LITERAL;
                 cur.str = "%";
-                term.items[term.len++] = cur;
+                PUSH_ITEM(cur);
                 state = TS_NORMAL;
                 break;
             default:
@@ -133,7 +139,7 @@ static fmt_term parse_term(char *str) {
                 cur.str[0] = '%';
                 cur.str[1] = *c;
                 cur.str[2] = '\0'; */
-                term.items[term.len++] = make_literal(3, "%%%c", *c);
+                PUSH_ITEM(make_literal(3, "%%%c", *c));
                 state = TS_NORMAL;
             }
             break;
@@ -148,7 +154,7 @@ static fmt_term parse_term(char *str) {
             cur.str = malloc(c2 - c + 1);
             strncpy(cur.str, c, c2 - c);
             cur.str[c2 - c] = '\0';
-            term.items[term.len++] = cur;
+            PUSH_ITEM(cur);
             if (*c2 == '%') {
                 state = TS_PCT;
                 c = c2;
@@ -159,6 +165,23 @@ static fmt_term parse_term(char *str) {
         default:
             exit(111);
         }
+    }
+
+    // Clean up leftover state, if we fell off the end of a term
+    switch (state) {
+    case TS_PCT:
+        cur.type = ITEM_TYPE_LITERAL;
+        cur.str = "%";
+        PUSH_ITEM(cur);
+        break;
+    case TS_PCTPAREN:
+        cur.type = ITEM_TYPE_LITERAL;
+        cur.str = "%(";
+        PUSH_ITEM(cur);
+        break;
+    case TS_KV:
+        PUSH_ITEM(make_literal(5, "%%(%c:", cur.type));
+        break;
     }
 
     return term;
