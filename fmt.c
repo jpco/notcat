@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "notlib/notlib.h"
 #include "notcat.h"
@@ -72,18 +73,22 @@ static void put_int(buffer *buf, int32_t i) {
 }
 
 static void fmt_body(const char *in, char *out) {
-    size_t i;
+    size_t i, j = 0;
     char c;
+    bool last_n = false;
     for (i = 0; (c = in[i]); ++i) {
         switch (c) {
         case '\n':
-            out[i] = ' ';
+            if (!last_n)
+                out[j++] = ' ';
+            last_n = true;
             break;
         default:
-            out[i] = c;
+            last_n = false;
+            out[j++] = c;
         }
     }
-    out[i] = '\0';
+    out[j] = '\0';
 }
 
 static void put_hint(buffer *buf, const NLNote *n, const char *name) {
