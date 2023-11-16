@@ -216,7 +216,7 @@ Capabilities must only consist of alphanumeric characters and dashes.
 Run the command
 .I CMD
 each time a notification is created or replaced.
-By default, the command is invoked via \fBexecve\fR, with its
+By default, the command is invoked via \fBexecvp\fR, with its
 arguments set to the interpolated
 .I FORMAT
 arguments provided to \fBnotcat\fR.
@@ -229,7 +229,7 @@ defaults to its built-in '\fBecho\fR'.
 Run the command
 .I CMD
 each time a notification is closed.
-By default, the command is invoked via \fBexecve\fR, with its
+By default, the command is invoked via \fBexecvp \fR, with its
 arguments set to the interpolated
 .I FORMAT
 arguments provided to \fBnotcat\fR.
@@ -242,7 +242,7 @@ Run the command
 .I CMD
 whenever the last notification is closed, and no more notifications
 remain.
-The command is invoked via \fBexecve\fR.
+The command is invoked via \fBexecvp\fR.
 Because \fB\-\-on\-empty\fR isn't associated with any particular
 notification, all
 .I FORMAT

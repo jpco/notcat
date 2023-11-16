@@ -1,4 +1,4 @@
-/* Copyright 2018 Jack Conger */
+/* Copyright 2018-2023 Jack Conger */
 
 /*
  * This file is part of notcat.
@@ -72,6 +72,8 @@ extern void run_cmd(char *cmd, const NLNote *n) {
     }
     cmd_argv[fmt_len + prefix_len] = NULL;
 
+    // FIXME: Build a new cmd_env and use execvpe instead of modifying environ
+    // in-place?  This would enable -std=c99 enablement too
     if (use_env_opt) {
         setenv("NOTCAT_EVENT", current_event, 1);
 
@@ -104,8 +106,7 @@ extern void run_cmd(char *cmd, const NLNote *n) {
         perror("Could not fork");
         break;
     case 0: {
-        extern char **environ;
-        int err = execve(cmd_argv[0], cmd_argv, environ);
+        int err = execvp(cmd_argv[0], cmd_argv);
         perror(cmd_argv[0]);
         exit(err);
     }
