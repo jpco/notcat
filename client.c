@@ -30,6 +30,7 @@ static GDBusConnection *connect() {
     conn = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
 
     if (error != NULL) {
+        fprintf(stderr, "DBus connection error: %s\n", error->message);
         g_error_free(error);
         return NULL;
     }
@@ -53,6 +54,7 @@ static GDBusProxy *make_proxy(GDBusConnection *conn) {
                                   &error);
 
     if (error != NULL) {
+        fprintf(stderr, "DBus proxy creation error: %s\n", error->message);
         g_error_free(error);
         return NULL;
     }
@@ -74,7 +76,7 @@ static GVariant *call(GDBusProxy *proxy, char *name, GVariant *args) {
             NULL,
             &error);
     if (error != NULL) {
-        // fprintf(stderr, "%s\n", error->message);
+        fprintf(stderr, "DBus call error (%s): %s\n", name, error->message);
         g_error_free(error);
         return NULL;
     }
