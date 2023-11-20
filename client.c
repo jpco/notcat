@@ -23,7 +23,7 @@
 
 #include "notcat.h"
 
-static GDBusConnection *connect() {
+static GDBusConnection *connect(void) {
     GDBusConnection *conn;
     GError *error = NULL;
 
@@ -445,7 +445,7 @@ extern int close_note(char *arg) {
     return (result == NULL);
 }
 
-extern int get_capabilities() {
+extern int get_capabilities(void) {
     GDBusProxy *proxy = make_proxy(connect());
     GVariant *result = call(proxy, "GetCapabilities", NULL);
 
@@ -462,7 +462,7 @@ extern int get_capabilities() {
     return 0;
 }
 
-extern int get_server_information() {
+extern int get_server_information(void) {
     GDBusProxy *proxy = make_proxy(connect());
     GVariant *result = call(proxy, "GetServerInformation", NULL);
 
@@ -509,7 +509,7 @@ static int listen_callback(const gchar *signal_name,
     return 0;
 }
 
-extern int listen_for_signals() {
+extern int listen_for_signals(void) {
     return listen(connect(), listen_callback, NULL);
 }
 

@@ -85,16 +85,16 @@ extern void run_cmd(char *cmd, const NLNote *n);
 
 extern char **capabilities;
 
-extern void fmt_capabilities();
+extern void fmt_capabilities(void);
 extern void add_capability(char *);
 
 // client.c
 
 extern int send_note(int argc, char **argv);
 extern int close_note(char *arg);
-extern int get_capabilities();
-extern int get_server_information();
-extern int listen_for_signals();
+extern int get_capabilities(void);
+extern int get_server_information(void);
+extern int listen_for_signals(void);
 extern int invoke_action(int argc, char **argv);
 
 #endif

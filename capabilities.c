@@ -30,7 +30,7 @@ char **capabilities = BASE_capabilities;
 static size_t caps_len = 2;
 static size_t caps_cap = 4;
 
-static void grow_capabilities() {
+static void grow_capabilities(void) {
     caps_cap *= 2;
     char **new = calloc(sizeof(char *), caps_cap);
     memcpy(new, capabilities, sizeof(char *) * caps_len);
@@ -77,7 +77,7 @@ static bool body_term(fmt_term t) {
     return false;
 }
 
-extern void fmt_capabilities() {
+extern void fmt_capabilities(void) {
     size_t i;
     for (i = 0; i < fmt.len; i++) {
         if (body_term(fmt.terms[i])) {
