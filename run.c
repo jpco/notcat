@@ -17,7 +17,7 @@
  * along with notcat.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// Used for setenv()
+// Used for setenv() (for now) and posix_spawnp()
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdlib.h>
@@ -27,6 +27,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <string.h>
+#include <spawn.h>
 
 #include "notlib/notlib.h"
 #include "notcat.h"
@@ -103,17 +104,17 @@ extern void run_cmd(char *cmd, const NLNote *n) {
         }
     }
 
-    switch (fork()) {
-    case -1:
-        perror("Could not fork");
-        break;
-    case 0: {
-        int err = execvp(cmd_argv[0], cmd_argv);
-        perror(cmd_argv[0]);
-        exit(err);
-    }
-    default:
-        wait(NULL);
+    int err;
+    pid_t cpid;
+    extern char **environ;
+    if ((err = posix_spawnp(&cpid, cmd_argv[0], NULL, NULL, cmd_argv, environ))) {
+        char *fmt = "posix_spawnp(%s) on %s event";
+        int msglen = strlen(cmd_argv[0]) + strlen(fmt) + strlen(current_event);
+        char errmsg[msglen + 1];
+        snprintf(errmsg, msglen, "posix_spawnp(%s) on %s event", cmd_argv[0], current_event);
+
+        errno = err;
+        perror(errmsg);
     }
 
     for (i = 0; i < fmt_len; i++)
