@@ -17,6 +17,9 @@
  * along with notcat.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Used for setenv()
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -72,8 +75,7 @@ extern void run_cmd(char *cmd, const NLNote *n) {
     }
     cmd_argv[fmt_len + prefix_len] = NULL;
 
-    // FIXME: Build a new cmd_env and use execvpe instead of modifying environ
-    // in-place?  This would enable -std=c99 enablement too
+    // FIXME: Build a new cmd_env instead of munging the local environment
     if (use_env_opt) {
         setenv("NOTCAT_EVENT", current_event, 1);
 
