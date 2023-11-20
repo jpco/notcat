@@ -116,6 +116,7 @@ extern void run_cmd(char *cmd, const NLNote *n) {
         errno = err;
         perror(errmsg);
     }
+    wait(NULL);
 
     for (i = 0; i < fmt_len; i++)
         free(cmd_argv[i+prefix_len]);
