@@ -1,6 +1,22 @@
+.\" notcat.1 -- notcat man page
+.\" Copyright 2024 Jack Conger
+.\"
+.\" notcat is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" notcat is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with notcat.  If not, see <http://www.gnu.org/licenses/>.
+
 .TH NOTCAT 1
 .SH NAME
-notcat \- print notifications
+notcat \- print or send notifications
 .SH SYNOPSIS
 .B notcat
 [\fB\-h\fR | \fB\-\-help\fR]
@@ -38,7 +54,7 @@ finds one of the following format sequences among them, then it will
 replace it in-place with the appropriate value, \fBprintf\fR-style.
 .TP
 \fB%%\fR
-A literal "%"
+A literal \fB%\fR
 .TP
 \fB%i\fR
 Notification ID
@@ -54,17 +70,17 @@ Body text, with newlines replaced with spaces to maintain printing
 one line per notification
 .TP
 \fB%t\fR
-Expiration timeout in milliseconds; 0 indicates "no timeout", and -1
-indicates "timeout is up to the notification server"
+Expiration timeout in milliseconds; 0 indicates no timeout, and -1
+indicates timeout is up to the notification server
 .TP
 \fB%u\fR
-Urgency; either "LOW", "NORMAL", or "CRITICAL"
+Urgency; either \fBLOW\fR, \fBNORMAL\fR, or \fBCRITICAL\fR
 .TP
 \fB%n\fR
 Type of
 .B notcat
-event (i.e., which subcommand is being called); either "notify",
-"close", or "empty"
+event (i.e., which subcommand is being called); either \fBnotify\fR,
+\fBclose\fR, or \fBempty\fR
 .TP
 \fB%c\fR
 Category; often of the form \fIclass\fR.\fIspecific\fR, but may be
@@ -82,7 +98,7 @@ If no
 .I FORMAT
 arguments are provided, then
 .B notcat
-defaults to '\fB%s\fR'.
+defaults to \fB%s\fR.
 .SS CONDITIONALS
 .PP
 In addition to the above-listed format sequences,
@@ -144,8 +160,8 @@ to the appropriate values:
 $\fINOTCAT_EVENT\fR
 Type of
 .B notcat
-event (i.e., which subcommand is being called); either "notify",
-"close", or "empty".
+event (i.e., which subcommand is being called); either \fBnotify\fR,
+\fBclose\fR, or \fBempty\fR.
 .TP
 $\fINOTE_ID\fR
 Notification ID
@@ -164,11 +180,11 @@ Category; often of the form \fIclass\fR.\fIspecific\fR, but may be
 simply \fIclass\fR
 .TP
 $\fINOTE_URGENCY\fR
-Urgency; either 'LOW', 'NORMAL', or 'CRITICAL'
+Urgency; either \fBLOW\fR, \fBNORMAL\fR, or \fBCRITICAL\fR
 .TP
 $\fINOTE_TIMEOUT\fR
-Expiration timeout in milliseconds; 0 indicates "no timeout", and -1
-indicates "timeout is up to the notification server"
+Expiration timeout in milliseconds; 0 indicates no timeout, and -1
+indicates timeout is up to the notification server
 .PP
 Arbitrary hints are not yet supported with the
 .B \-e
@@ -186,7 +202,7 @@ Display help and exit.
 \fB\-s\fR, \fB\-\-shell\fR
 Run subcommands within a subshell, using
 .IP
-$\fISHELL\fR \-c $\fICMD\fR
+\fC$SHELL \-c $CMD
 .TP
 \fB\-e\fR, \fB\-\-env\fR
 Pass subcommands information about notifications through the
@@ -223,7 +239,7 @@ arguments provided to \fBnotcat\fR.
 .IP
 If not provided,
 .B notcat
-defaults to its built-in '\fBecho\fR'.
+defaults to its built-in \fBecho\fR.
 .TP
 \fB\-\-on\-close=\fICMD\fR
 Run the command
@@ -268,7 +284,7 @@ Close the notification with the given \fIID\fR.
 \fBinvoke\fR \fIID\fR [\fIKEY\fR]
 Invoke the action with the key \fIKEY\fR on the notification with the
 given \fIID\fR.
-If no \fIKEY\fR is provided, "default" is used.
+If no \fIKEY\fR is provided, \fBdefault\fR is used.
 Unfortunately, \fBinvoke\fR will only work with notification servers
 which advertise the \fBx-notlib-remote-actions\fR capability, which will
 probably only ever be 
@@ -357,30 +373,30 @@ May be one of \fBlow\fR, \fBnormal\fR, or \fBcritical\fR.
 Simple invocation to print notification summaries and bodies as they
 arrive:
 .IP
-\fB$\fR notcat %s %B
+\fCnotcat %s %B
 .PP
 Invocation that has the same behavior as above, but by invoking
 .B echo
 in a subshell on each notification:
 .IP
-\fB$\fR notcat \-s '\-\-on-notify=echo $*' %s %B
+\fCnotcat \-s \(aq\-\-on-notify=echo $*\(aq %s %B
 .PP
-Note the trailing '$*' in the command; this is required for the
-invoked
+Note the trailing \fC$*\fR in the \fB--on-notify\fR command; this is
+required for the invoked
 .B echo
 to receive the args from its calling shell.
 .PP
 Invocation that has (roughly) the same behavior as above, but using
 environment variables this time:
 .IP
-\fB$\fR notcat \-se '\-\-on-notify=echo $NOTE_SUMMARY $NOTE_BODY'
+\fCnotcat \-se \(aq\-\-on-notify=echo $NOTE_SUMMARY $NOTE_BODY\(aq
 .PP
 This invocation has the disadvantage of being somewhat more verbose,
 and also loses the automatic formatting that
 .B notcat
-applies to the notification body.
-However, using \-e can make complex shell scripts run as subcommands
-significantly clearer.
+applies to the notification body, in favor of providing control to the
+user, and making longer shell scripts run as subcommands significantly
+clearer.
 .SH AUTHOR
 .B notcat
 is written by Jack Conger (jpco).
