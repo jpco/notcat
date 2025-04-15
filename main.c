@@ -204,28 +204,30 @@ void on_replace(const NLNote *n) {
 }
 
 int main(int argc, char **argv) {
-    if (argc > 1 && !strcmp(argv[1], "send")) {
-        return send_note(argc, argv);
-    }
-    if (argc > 1 && !strcmp(argv[1], "close")) {
-        if (argc != 3) usage(argv[0], 2);
-        return close_note(argv[2]);
-    }
-    if (argc > 1 && !strcmp(argv[1], "getcapabilities")) {
-        if (argc != 2) usage(argv[0], 2);
-        return get_capabilities();
-    }
-    if (argc > 1 && !strcmp(argv[1], "getserverinfo")) {
-        if (argc != 2) usage(argv[0], 2);
-        return get_server_information();
-    }
-    if (argc > 1 && !strcmp(argv[1], "listen")) {
-        if (argc != 2) usage(argv[0], 2);
-        return listen_for_signals();
-    }
-    if (argc > 1 && !strcmp(argv[1], "invoke")) {
-        if (argc != 3 && argc != 4) usage(argv[0], 2);
-        return invoke_action(argc - 2, argv + 2);
+    if (argc > 1) {
+        if (!strcmp(argv[1], "send")) {
+            return send_note(argc - 2, argv + 2);
+        }
+        if (!strcmp(argv[1], "close")) {
+            if (argc != 3) usage(argv[0], 2);
+            return close_note(argv[2]);
+        }
+        if (!strcmp(argv[1], "getcapabilities")) {
+            if (argc != 2) usage(argv[0], 2);
+            return get_capabilities();
+        }
+        if (!strcmp(argv[1], "getserverinfo")) {
+            if (argc != 2) usage(argv[0], 2);
+            return get_server_information();
+        }
+        if (!strcmp(argv[1], "listen")) {
+            if (argc != 2) usage(argv[0], 2);
+            return listen_for_signals();
+        }
+        if (!strcmp(argv[1], "invoke")) {
+            if (argc != 3 && argc != 4) usage(argv[0], 2);
+            return invoke_action(argc - 2, argv + 2);
+        }
     }
 
     notcat_getopt(argc, argv);

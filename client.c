@@ -177,7 +177,7 @@ extern int send_note(int argc, char **argv) {
     char mode = '\0';
     int skip = 0;
     int i;
-    for (i = 2; i < argc; i++) {
+    for (i = 0; i < argc; i++) {
         char *arg = argv[i];
         switch (mode) {
         // We've seen a single-letter option, like "-a".

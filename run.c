@@ -100,7 +100,7 @@ extern void run_cmd(char *cmd, const NLNote *n) {
                 free(h);
             }
 
-            // TODO: Figure out a sensible way to do hints
+            // TODO: Figure out a sensible way to do hints and actions
         }
     }
 
@@ -116,7 +116,14 @@ extern void run_cmd(char *cmd, const NLNote *n) {
         errno = err;
         perror(errmsg);
     }
-    wait(NULL);
+
+    // TODO: properly handle signals, like https://www.cons.org/cracauer/sigint.html
+    while ((err = wait(NULL)) == -1) {
+        if (errno != EINTR) {
+            perror("wait");
+            break;
+        }
+    }
 
     for (i = 0; i < fmt_len; i++)
         free(cmd_argv[i+prefix_len]);

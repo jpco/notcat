@@ -51,6 +51,8 @@ Options:
 
 Notcat can execute arbitrary subcommands when notifications are received and closed via the `--on-notify` and `--on-close` flags, respectively.  When the last notification is closed, the `--on-empty` subcommand is run after `--on-close`.
 
+Subcommands are invoked one-at-a-time; if an event (a new notification, closed notification, etc.) occurs during the invocation of a subcommand, that event is queued internally.
+
 ## Format strings
 
 Notcat is configurable via format strings (similar to the standard `date` command).  It accepts any number of format string arguments.
@@ -157,7 +159,8 @@ $ notcat -e --on-notify=./post.sh
 ## TODO
 
  - more format sequences and environment variables
+    - catch up environment variables to format sequences (actions and hints!)
  - markup "support", as far as it will go
     - starting with *stripping* all markup (and advertising 'body-markup')
     - then allow flags to format markup
- - error reporting and handling on wait() call
+ - D-Bus error reporting

@@ -51,7 +51,7 @@ They support arbitrary strings.
 If
 .B notcat
 finds one of the following format sequences among them, then it will
-replace it in-place with the appropriate value, \fBprintf\fR-style.
+replace it in-place with the appropriate value, \fBprintf\fR(1)-style.
 .TP
 \fB%%\fR
 A literal \fB%\fR
@@ -157,41 +157,41 @@ argument is supplied, then instead of the formatted arguments,
 subcommands are invoked with the following environment variables set
 to the appropriate values:
 .TP
-$\fINOTCAT_EVENT\fR
+\fB$NOTCAT_EVENT\fR
 Type of
 .B notcat
 event (i.e., which subcommand is being called); either \fBnotify\fR,
 \fBclose\fR, or \fBempty\fR.
 .TP
-$\fINOTE_ID\fR
+\fB$NOTE_ID\fR
 Notification ID
 .TP
-$\fINOTE_APP_NAME\fR
+\fB$NOTE_APP_NAME\fR
 App name
 .TP
-$\fINOTE_SUMMARY\fR
+\fB$NOTE_SUMMARY\fR
 Summary
 .TP
-$\fINOTE_BODY\fR
+\fB$NOTE_BODY\fR
 Notification body
 .TP
-$\fINOTE_CATEGORY\fR
+\fB$NOTE_CATEGORY\fR
 Category; often of the form \fIclass\fR.\fIspecific\fR, but may be
 simply \fIclass\fR
 .TP
-$\fINOTE_URGENCY\fR
+\fB$NOTE_URGENCY\fR
 Urgency; either \fBLOW\fR, \fBNORMAL\fR, or \fBCRITICAL\fR
 .TP
-$\fINOTE_TIMEOUT\fR
+\fB$NOTE_TIMEOUT\fR
 Expiration timeout in milliseconds; 0 indicates no timeout, and -1
 indicates timeout is up to the notification server
 .PP
-Arbitrary hints are not yet supported with the
+Actions and general hints are not yet supported with the
 .B \-e
 flag.
 .B \-e
 is useless when used without explicit subcommands, because
-\fBnotcat\fR's default behavior only introspects the
+\fBnotcat\fR's default \fBecho\fR behavior only introspects the
 .I FORMAT
 arguments.
 .SH OPTIONS
@@ -202,7 +202,7 @@ Display help and exit.
 \fB\-s\fR, \fB\-\-shell\fR
 Run subcommands within a subshell, using
 .IP
-\fC$SHELL \-c $CMD
+\fB$SHELL \-c \fIcommand ...\fR
 .TP
 \fB\-e\fR, \fB\-\-env\fR
 Pass subcommands information about notifications through the
@@ -272,9 +272,8 @@ This may be used in case there are
 .I FORMAT
 arguments which would otherwise be parsed as options to \fBnotcat\fR.
 .SH CLIENT COMMANDS
-The
-.B notcat
-command can be used to interact as a client with an already-running
+.B Notcat
+can be used to interact as a client with an already-running
 notification server.
 Existing commands are:
 .TP
@@ -363,7 +362,7 @@ It will also print the name of any actions invoked on the
 notification when they occur.
 .TP
 \fB-t\fR, \fB--timeout=\fITIMEOUT\fR
-Notification timeout.
+Notification timeout, in milliseconds.
 The default value is managed by the server.
 .TP
 \fB-u\fR, \fB--urgency=\fIURGENCY\fR
@@ -416,7 +415,8 @@ In particular, the \fBbody-images\fR, \fBicon-multi\fR,
 \fBicon-static\fR, and \fBsound\fR capabilities are outside the
 intended design of \fBnotcat\fR.
 .SH SEE ALSO
-\fBnotify\-send\fR\|(1)
+\fBnotify\-send\fR\|(1),
+\fBprintf\fR\|(1)
 .SH STANDARDS
 .B notcat
 conforms to version 1.2 of the Desktop Notifications Specification.
