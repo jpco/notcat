@@ -26,7 +26,7 @@ test		: test.c ${CSRC} libnotlib.a
 	${CC} -o test ${DEFINES} ${CFLAGS} test.c ${CSRC} -L./notlib -lnotlib ${LIBS} ${INCLUDES}
 
 libnotlib.a	:
-	$(MAKE) static -C notlib DEFINES=-DNL_REMOTE_ACTIONS=1
+	$(MAKE) static -C notlib DEFINES='-DNL_ACTIONS=1 -DNL_REMOTE_ACTIONS=1'
 
 install		: notcat
 	$(MKDIR_P) $(bindir)

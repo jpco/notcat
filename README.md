@@ -161,6 +161,7 @@ $ notcat -e --on-notify=./post.sh
  - more format sequences and environment variables
     - catch up environment variables to format sequences (actions and hints!)
  - markup "support", as far as it will go
+    - [b], [i], [u], [a href], [img src alt] is all you need
     - starting with *stripping* all markup (and advertising 'body-markup')
     - then allow flags to format markup
  - D-Bus error reporting
