@@ -126,7 +126,7 @@ static fmt_term parse_term(char *str) {
                 break;
             case '?':
                 cur.type = ITEM_TYPE_CONDITIONAL;
-                if (!strchr("asBtcuAh", c[1]) || c[2] != ':') {
+                if (!strchr("asbBtcuAh", c[1]) || c[2] != ':') {
                     PUSH_ITEM(make_literal(4, "%%(?", 0));
                     state = TS_NORMAL;
                     break;
@@ -135,7 +135,7 @@ static fmt_term parse_term(char *str) {
                 c += 2;
                 state = TS_COND;
                 break;
-            case 'i': case 'a': case 's': case 'B':
+            case 'i': case 'a': case 's': case 'b': case 'B':
             case 't': case 'u': case 'c': case 'n':
                 cur.type = *c;
                 switch (c[1]) {
@@ -159,7 +159,7 @@ static fmt_term parse_term(char *str) {
             break;
         case TS_PCT:
             switch (*c) {
-            case 'i': case 'a': case 's': case 'B':
+            case 'i': case 'a': case 's': case 'b': case 'B':
             case 't': case 'u': case 'c': case 'n':
                 cur.type = *c;
                 cur.str  = NULL;

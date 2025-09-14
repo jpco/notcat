@@ -128,6 +128,9 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
         case 's':
             if (n && n->summary) put_str(buf, n->summary);
             break;
+        case 'b':
+            if (n && n->body) put_str(buf, n->body);
+            break;
         case 'B':
             if (!n) break;
             if (body == NULL) {
@@ -163,7 +166,8 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
             switch (item->chr) {
             case 'a': if (n && n->appname && n->appname[0]) cond = 1; break;
             case 's': if (n && n->summary && n->summary[0]) cond = 1; break;
-            case 'B': if (n && n->body && n->body[0]) cond = 1; break;
+            case 'b': if (n && n->body && n->body[0]) cond = 1; break;
+            case 'B': if (n && n->body && n->body[0]) cond = 2; break; /* 2! */
             case 't': if (n && n->timeout >= 0) cond = 1; break;
             case 'c': {
                 char *c = nl_get_hint_as_string(n, "category");
@@ -176,7 +180,15 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
             case 'u': if (n && n->urgency != URG_NORM) cond = 1; break;
             default:  if (n) cond = 1; break;
             }
-            if (cond)
+            if (cond == 2) {
+                if (body == NULL && n != NULL) {
+                    body = (n->body == NULL ? "" : malloc(1 + strlen(n->body)));
+                    if (markup_body(n->body, body) == -1)
+                        fmt_body(n->body, body);
+                }
+                cond = (body && body[0] ? 1 : 0);
+            }
+            if (cond == 1)
                 fmt_note_buf(buf, &item->subterm, n);
             break;
         }

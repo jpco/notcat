@@ -65,9 +65,12 @@ App name
 \fB%s\fR
 Summary
 .TP
+\fB%b\fR
+Body text
+.TP
 \fB%B\fR
-Body text, with newlines replaced with spaces to maintain printing
-one line per notification
+Body text, "cooked" such that markup is interpreted and newlines are
+replaced with spaces
 .TP
 \fB%t\fR
 Expiration timeout in milliseconds; 0 indicates no timeout, and -1
@@ -126,10 +129,15 @@ Formats
 .I EXPR
 if the notification's summary is non-empty.
 .TP
-.B B
+.B b
 Formats
 .I EXPR
 if the notification has a body and it is non-empty.
+.TP
+.B B
+Formats
+.I EXPR
+if the notification has a body and it is non-empty after being "cooked".
 .TP
 .B t
 Formats

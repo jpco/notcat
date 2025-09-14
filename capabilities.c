@@ -67,10 +67,28 @@ static bool body_term(fmt_term t) {
     size_t i;
     for (i = 0; i < t.len; i++) {
         switch (t.items[i].type) {
+        case 'b': case 'B':
+            return true;
+        case ITEM_TYPE_CONDITIONAL:
+            if (t.items[i].chr == 'b' || t.items[i].chr == 'B')
+                return true;
+            if (body_term(t.items[i].subterm))
+                return true;
+        }
+    }
+    return false;
+}
+
+static bool body_fmt_term(fmt_term t) {
+    size_t i;
+    for (i = 0; i < t.len; i++) {
+        switch (t.items[i].type) {
         case 'B':
             return true;
         case ITEM_TYPE_CONDITIONAL:
-            if (body_term(t.items[i].subterm))
+            if (t.items[i].chr == 'B')
+                return true;
+            if (body_fmt_term(t.items[i].subterm))
                 return true;
         }
     }
@@ -79,11 +97,22 @@ static bool body_term(fmt_term t) {
 
 extern void fmt_capabilities(void) {
     size_t i;
+    bool body = false;
+    bool markup = false;
     for (i = 0; i < fmt.len; i++) {
-        if (body_term(fmt.terms[i])) {
-            add_capability("body");
-            add_capability("body-markup");
-            break;
+        if (body_fmt_term(fmt.terms[i])) {
+            body = true;
+            markup = true;
+        } else if (body_term(fmt.terms[i])) {
+            body = true;
         }
+        if (body && markup)
+            break;
     }
+    if (body)
+        add_capability("body");
+    if (markup)
+        add_capability("body-markup");
 }
+
+/* vim: set ft=c tabstop=4 softtabstop=4 shiftwidth=4 expandtab textwidth=0: */
