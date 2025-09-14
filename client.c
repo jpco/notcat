@@ -353,8 +353,8 @@ get_urgency:
                 } else if (!strncmp(arg, "--actions=", 10)) {
                     arg += 10;
                     goto get_actions;
-                } else if (!strncmp(arg, "--hints=", 8)) {
-                    arg += 8;
+                } else if (!strncmp(arg, "--hint=", 7)) {
+                    arg += 7;
                     goto get_hint;
                 } else if (!strncmp(arg, "--urgency=", 10)) {
                     arg += 10;
