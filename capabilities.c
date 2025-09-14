@@ -82,6 +82,7 @@ extern void fmt_capabilities(void) {
     for (i = 0; i < fmt.len; i++) {
         if (body_term(fmt.terms[i])) {
             add_capability("body");
+            add_capability("body-markup");
             break;
         }
     }

@@ -132,7 +132,8 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
             if (!n) break;
             if (body == NULL) {
                 body = (n->body == NULL ? "" : malloc(1 + strlen(n->body)));
-                fmt_body(n->body, body);
+                if (markup_body(n->body, body) == -1)
+                    fmt_body(n->body, body);
             }
             put_str(buf, body);
             break;
@@ -190,3 +191,5 @@ extern char *fmt_note(fmt_term *fmt, const NLNote *n) {
     fmt_note_buf(buf, fmt, n);
     return dump_buffer(buf);
 }
+
+/* vim: set ft=c tabstop=4 softtabstop=4 shiftwidth=4 expandtab textwidth=0: */

@@ -71,6 +71,10 @@ extern char *str_urgency(const enum NLUrgency urgency);
 extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n);
 extern char *fmt_note(fmt_term *fmt, const NLNote *n);
 
+// markup.c
+
+extern int markup_body(const char *in, char *out);
+
 // run.c
 
 extern char **fmt_string_opt;
