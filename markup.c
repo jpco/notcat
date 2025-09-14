@@ -29,7 +29,6 @@
 #define BODY_TEXT       1
 #define BODY_TAG        2
 #define BODY_TAG_CLOSE  3
-#define BODY_AMP        4
 
 typedef struct {
 	char type;
@@ -57,11 +56,6 @@ static ssize_t next_token(const char *in, token *t) {
             t->str = in + 1;
         }
         break;
-    case '&':
-        i++;
-        t->type = BODY_AMP;
-        t->str = in;
-        break;
     default:
         t->type = BODY_TEXT;
         t->str = in;
@@ -83,17 +77,9 @@ static ssize_t next_token(const char *in, token *t) {
             }
         }
         return -1;
-    case BODY_AMP:
-        for (; (c = in[i]); ++i) {
-            if (c == ';') {
-                t->len = i + 1;
-                return i + 1;
-            }
-        }
-        return -1;
     default:
         for (; (c = in[i]); ++i) {
-            if (c == '<' || c == '&') {
+            if (c == '<') {
                 t->len = i;
                 return i;
             }
@@ -120,23 +106,6 @@ static void free_tree(node *tree) {
     for (int i = 0; i < tree->childlen; i++)
         free_tree(tree->children[i]);
     free(tree);
-}
-
-static const char *ampcodes[] = {
-    "&amp;", "&",
-    "&lt;", "<",
-    "&gt;", ">",
-    "&quot;", "\"",
-    "&apos;", "'",
-    NULL
-};
-
-const char *deampersand(const char *code, int len) {
-    for (int i = 0; ampcodes[i] != NULL; i += 2) {
-        if (strncmp(ampcodes[i], code, len) == 0)
-            return ampcodes[i+1];
-    }
-    return NULL;
 }
 
 static node *parse(const char *in) {
@@ -195,18 +164,6 @@ static node *parse(const char *in) {
             }
             curr = curr->parent;
             break;
-        case BODY_AMP: {
-            /* FIXME: we don't check that childlen < 50 */
-            curr->children[curr->childlen] = calloc(1, sizeof(node));
-            node *child = curr->children[curr->childlen++];
-
-            const char *deamped = deampersand(t.str, t.len);
-            child->parent = curr;
-            child->type = TEXT_NODE;
-            child->str = deamped == NULL ? t.str : deamped;
-            child->strlen = deamped == NULL ? t.len : 1;
-            break;
-        }
         default:
             /* code bug */
             free_tree(tree);
@@ -227,7 +184,31 @@ after_loop:
     return tree;
 }
 
-static int last_n = 0;
+static int last_char_was_newline = 0;
+
+typedef struct {
+    const char *code;
+    size_t len;
+    char out;
+} ampcode;
+
+static ampcode ampcodes[] = {
+    {"&amp;", 5, '&'},
+    {"&lt;", 4, '<'},
+    {"&gt;", 4, '>'},
+    {"&quot;", 6, '"'},
+    {"&apos;", 6, '\''},
+    {NULL, 0, '\0'}
+};
+
+static int findampcode(const char *in, char *out) {
+    for (int i = 0; ampcodes[i].code != NULL; i++) {
+        if (strncmp(ampcodes[i].code, in, ampcodes[i].len) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 static size_t drain_node(node *n, char *out) {
     size_t ret = 0;
@@ -244,12 +225,21 @@ static size_t drain_node(node *n, char *out) {
     case TEXT_NODE:
         for (int i = 0; i < n->strlen; i++) {
             if (n->str[i] == '\n') {
-                if (!last_n)
+                if (!last_char_was_newline)
                     out[ret++] = ' ';
-                last_n = 1;
+                last_char_was_newline = 1;
+            } else if (n->str[i] == '&') {
+                last_char_was_newline = 0;
+                int aci = findampcode(n->str + i, out + ret);
+                if (aci >= 0) {
+                    out[ret++] = ampcodes[aci].out;
+                    i += ampcodes[aci].len - 1;
+                } else {
+                    out[ret++] = n->str[i];
+                }
             } else {
+                last_char_was_newline = 0;
                 out[ret++] = n->str[i];
-                last_n = 0;
             }
         }
     }
@@ -258,7 +248,7 @@ static size_t drain_node(node *n, char *out) {
 
 /* NOTE: we do not check the length of out. this is fine as long as we only strip markup */
 extern int markup_body(const char *in, char *out) {
-    last_n = 0;
+    last_char_was_newline = 0;
     node *tree = parse(in);
     if (tree == NULL) {
         return -1;   /* Fall back to raw text */
