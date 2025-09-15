@@ -227,20 +227,19 @@ Additional capabilities for
 to advertise.
 By default,
 .B notcat
-tries to advertise a reasonable set of capabilities, either (if
-.B \-e
-is not set) based on its
+tries to advertise a reasonable set of capabilities, either based on its
 .I FORMAT
 arguments, or based on the set of environment variables that
 .B notcat
 passes to subcommands.
-Capabilities must only consist of alphanumeric characters and dashes.
+Capabilities must only consist of lower-case alphanumeric characters and
+dashes.
 .TP
 \fB\-\-on\-notify=\fICMD\fR
 Run the command
 .I CMD
 each time a notification is created or replaced.
-By default, the command is invoked via \fBexecvp\fR, with its
+By default, the command is invoked via \fBposix_spawnp\fR, with its
 arguments set to the interpolated
 .I FORMAT
 arguments provided to \fBnotcat\fR.
@@ -253,7 +252,7 @@ defaults to its built-in \fBecho\fR.
 Run the command
 .I CMD
 each time a notification is closed.
-By default, the command is invoked via \fBexecvp \fR, with its
+By default, the command is invoked via \fBposix_spawnp\fR, with its
 arguments set to the interpolated
 .I FORMAT
 arguments provided to \fBnotcat\fR.
@@ -266,7 +265,7 @@ Run the command
 .I CMD
 whenever the last notification is closed, and no more notifications
 remain.
-The command is invoked via \fBexecvp\fR.
+The command is invoked via \fBposix_spawnp\fR.
 Because \fB\-\-on\-empty\fR isn't associated with any particular
 notification, all
 .I FORMAT
@@ -279,6 +278,7 @@ Stop option parsing.
 This may be used in case there are
 .I FORMAT
 arguments which would otherwise be parsed as options to \fBnotcat\fR.
+
 .SH CLIENT COMMANDS
 .B Notcat
 can be used to interact as a client with an already-running
@@ -294,12 +294,12 @@ given \fIID\fR.
 If no \fIKEY\fR is provided, \fBdefault\fR is used.
 Unfortunately, \fBinvoke\fR will only work with notification servers
 which advertise the \fBx-notlib-remote-actions\fR capability, which will
-probably only ever be 
+probably only ever be
 .B notcat
 itself.
 .TP
 \fBgetcapabilities\fR
-Get the capabilities of the notification server.
+Print the capabilities of the notification server, one per line.
 .TP
 \fBgetserverinfo\fR
 Get basic information about the notification server.
@@ -308,15 +308,16 @@ Get basic information about the notification server.
 Listen for signals from the notification server and print them as
 they arrive.
 .TP
-\fBsend\fR
+\fBsend\fR [\fISUMMARY\fR] [\fIBODY\fR]
 Send a notification to the server.
-In addition to any options, \fBsend\fR requires at most two arguments
-specifying the notification summary and body, respectively.
-If only one argument is given, it is used as the summary.
+In addition to any options, \fBsend\fR takes up to two arguments
+specifying the notification summary and body.
+If only one argument is given, it is taken as the summary.
 .PP
 There are several options for the
 .B send
 command, described as follows.
+
 .SS SEND OPTIONS
 .PP
 .B notcat send
@@ -330,7 +331,7 @@ App name.
 .TP
 \fB-A\fR, \fB--actions=\fIACTION\fB,\fIKEY\fB:\fINAME\fR...
 Actions.
-Multiple comma-separated actions may be supplied in one arg, and if
+Multiple comma-separated actions may be supplied in one argument, and if
 an action is provided as a \fIKEY\fR:\fINAME\fR, then \fINAME\fR will
 be used in the notification display.
 .TP
@@ -338,7 +339,7 @@ be used in the notification display.
 Notification category, which should be one of the values given in the
 D-Bus Notifications API documentation.
 .TP
-\fB-h\fR, \fB--hint=\fR[[\fITYPE\fR]\fB:\fR]\fINAME\fB:\fIVALUE\fR
+\fB-h\fR, \fB--hint=\fR[\fITYPE\fB:\fR]\fINAME\fB:\fIVALUE\fR
 A hint, which is an arbitrary key-value pair.
 .B notcat
 uses GLib's type format strings and parser to get values from this
@@ -413,7 +414,7 @@ Both
 and this manual page are released under the GNU General Public
 License, version 3+.
 .SH ERRATA
-Markup and links are not yet supported.
+Markup and links are not yet well supported.
 .PP
 Format sequences lack the escaping facilities to allow arbitrary text
 in things like conditionals.
@@ -424,7 +425,11 @@ In particular, the \fBbody-images\fR, \fBicon-multi\fR,
 intended design of \fBnotcat\fR.
 .SH SEE ALSO
 \fBnotify\-send\fR\|(1),
-\fBprintf\fR\|(1)
+\fBprintf\fR\|(1),
+the
+.UR https://\:specifications\:.freedesktop\:.org/\:notification-spec/
+Desktop Notifications Specification
+.UE
 .SH STANDARDS
 .B notcat
 conforms to version 1.2 of the Desktop Notifications Specification.
