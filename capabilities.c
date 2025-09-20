@@ -24,11 +24,17 @@
 
 #include "notcat.h"
 
-static char *BASE_capabilities[] = {"actions", "x-notlib-remote-actions", NULL, NULL};
+static char *BASE_capabilities[] = {
+    "actions",
+    "x-notlib-remote-actions",
+    "x-canonical-private-synchronous",
+    "x-dunst-stack-tag",
+    NULL, NULL, NULL, NULL
+};
 char **capabilities = BASE_capabilities;
 
-static size_t caps_len = 2;
-static size_t caps_cap = 4;
+static size_t caps_len = 4;
+static size_t caps_cap = 8;
 
 static void grow_capabilities(void) {
     caps_cap *= 2;
