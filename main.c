@@ -167,15 +167,19 @@ static void notcat_getopt(int argc, char **argv) {
 
 static uint32_t rc = 0;
 
-void on_notify(const NLNote *n) {
+void do_notify(const NLNote *n) {
     current_event = "notify";
-    ++rc;
     if (!strcmp(on_notify_opt, "echo") && !shell_run_opt) {
         print_note(n);
     } else if (*on_notify_opt) {
         run_cmd(on_notify_opt, n);
     }
     fflush(stdout);
+}
+
+void on_notify(const NLNote *n) {
+    ++rc;
+    do_notify(n);
 }
 
 void on_close(const NLNote *n) {
@@ -200,7 +204,7 @@ void on_close(const NLNote *n) {
 }
 
 void on_replace(const NLNote *n) {
-    on_notify(n);
+    do_notify(n);
 }
 
 int main(int argc, char **argv) {
