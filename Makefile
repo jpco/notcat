@@ -13,7 +13,7 @@ srcdir = .
 CSRC = fmt.c buffer.c run.c client.c capabilities.c parse.c markup.c
 HSRC = notcat.h
 
-CFLAGS = -Wall -Werror -Wpedantic -O3 -std=c99
+CFLAGS = -Wall -Werror -Wpedantic -g -O2 -std=c99
 
 DEPS     = gio-2.0 gobject-2.0 glib-2.0
 LIBS     = $(shell pkg-config --libs ${DEPS})
