@@ -112,12 +112,16 @@ static void put_action(buffer *buf, const NLNote *n, const char *key) {
 #define HINT        3
 #define ACTION      4
 
+static char *empty_body = "";
+
 extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
     size_t i;
-    char *body = NULL;
+    char *body;
 
     for (i = 0; i < fmt->len; i++) {
         fmt_item *item = &(fmt->items[i]);
+        body = NULL;
+
         switch (item->type) {
         case 'i':
             if (n) put_uint(buf, n->id);
@@ -134,7 +138,7 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
         case 'B':
             if (!n) break;
             if (body == NULL) {
-                body = (n->body == NULL ? "" : malloc(1 + strlen(n->body)));
+                body = (n->body == NULL ? empty_body : malloc(1 + strlen(n->body)));
                 if (markup_body(n->body, body) == -1)
                     fmt_body(n->body, body);
             }
@@ -182,7 +186,7 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
             }
             if (cond == 2) {
                 if (body == NULL && n != NULL) {
-                    body = (n->body == NULL ? "" : malloc(1 + strlen(n->body)));
+                    body = (n->body == NULL ? empty_body : malloc(1 + strlen(n->body)));
                     if (markup_body(n->body, body) == -1)
                         fmt_body(n->body, body);
                 }
@@ -195,6 +199,9 @@ extern void fmt_note_buf(buffer *buf, fmt_term *fmt, const NLNote *n) {
         default:
             exit(59);
         }
+
+        if (body != NULL && body != empty_body)
+            free(body);
     }
 }
 
