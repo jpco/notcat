@@ -15,7 +15,7 @@ HSRC = notcat.h
 
 CFLAGS = -Wall -Werror -Wpedantic -g -O2 -std=c99
 
-DEPS     = gio-2.0 gobject-2.0 glib-2.0
+DEPS     = gio-2.0 gobject-2.0 glib-2.0 dbus-1
 LIBS     = $(shell pkg-config --libs ${DEPS})
 INCLUDES = $(shell pkg-config --cflags ${DEPS})
 

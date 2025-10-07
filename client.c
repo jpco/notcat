@@ -1,4 +1,4 @@
-/* Copyright 2019 Jack Conger */
+/* Copyright 2019, 2025 Jack Conger */
 
 /*
  * This file is part of notcat.
@@ -19,119 +19,94 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <gio/gio.h>
+#include <stdbool.h>
+#include <string.h>
+
+#include <dbus/dbus.h>
 
 #include "notcat.h"
 
-static GDBusConnection *connect(void) {
-    GDBusConnection *conn;
-    GError *error = NULL;
+#define NF_INTERFACE    "org.freedesktop.Notifications"
+#define NF_NAME         "org.freedesktop.Notifications"
+#define NF_PATH         "/org/freedesktop/Notifications"
 
-    conn = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+static DBusConnection *dconnect(void) {
+    DBusConnection *conn;
+    DBusError error;
 
-    if (error != NULL) {
-        fprintf(stderr, "DBus connection error: %s\n", error->message);
-        g_error_free(error);
+    dbus_error_init(&error);
+    conn = dbus_bus_get(DBUS_BUS_SESSION, &error);
+    if (dbus_error_is_set(&error)) {
+        fprintf(stderr, "DBus connection error: %s\n", error.message);
         return NULL;
     }
     return conn;
 }
 
-static GDBusProxy *make_proxy(GDBusConnection *conn) {
-    GDBusProxy *proxy;
-    GError *error = NULL;
+static DBusMessage *dcall(DBusConnection *conn, char *method,
+        void (*infunc)(DBusMessage *, void *),
+        void *user_data) {
+    DBusError error;
+    DBusMessage *req, *resp;
 
     if (conn == NULL)
         return NULL;
 
-    proxy = g_dbus_proxy_new_sync(conn,
-                                  G_DBUS_PROXY_FLAGS_NONE,
-                                  NULL,
-                                  "org.freedesktop.Notifications",
-                                  "/org/freedesktop/Notifications",
-                                  "org.freedesktop.Notifications",
-                                  NULL,
-                                  &error);
+    dbus_error_init(&error);
+    req = dbus_message_new_method_call(NF_NAME, NF_PATH, NF_INTERFACE, method);
+    if (infunc != NULL)
+        infunc(req, user_data);
+    resp = dbus_connection_send_with_reply_and_block(conn, req, 1000, &error);
+    dbus_message_unref(req);
 
-    if (error != NULL) {
-        fprintf(stderr, "DBus proxy creation error: %s\n", error->message);
-        g_error_free(error);
+    if (dbus_error_is_set(&error)) {
+        fprintf(stderr, "DBus call error (%s): %s\n", method, error.message);
         return NULL;
     }
-    return proxy;
+    return resp;
 }
-
-static GVariant *call(GDBusProxy *proxy, char *name, GVariant *args) {
-    GVariant *result;
-    GError *error = NULL;
-
-    if (proxy == NULL)
-        return NULL;
-
-    result = g_dbus_proxy_call_sync(proxy,
-            name,
-            args,
-            G_DBUS_CALL_FLAGS_NONE,
-            -1,
-            NULL,
-            &error);
-    if (error != NULL) {
-        fprintf(stderr, "DBus call error (%s): %s\n", name, error->message);
-        g_error_free(error);
-        return NULL;
-    }
-    return result;
-}
-
-typedef int (*signal_callback_type)(const gchar *signal_name,
-                                    GVariant *parameters, void *data);
 
 typedef struct {
-    guint sub_id;
-    void *data;
-    GMainLoop *loop;
-    signal_callback_type callback;
-} signal_callback_user_data_type;
+    int (*callback_func)(const char *, DBusMessage *, void *);
+    void *user_data;
+} signal_handler_struct;
 
-static void signal_callback(GDBusConnection *conn,
-                            const gchar *sender_name,
-                            const gchar *object_path,
-                            const gchar *iface_name,
-                            const gchar *signal_name,
-                            GVariant *parameters,
-                            gpointer user_data) {
-    signal_callback_user_data_type *d
-        = (signal_callback_user_data_type *) user_data;
-    if (d->callback(signal_name, parameters, d->data)) {
-        g_dbus_connection_signal_unsubscribe(conn, d->sub_id);
-        g_main_loop_quit(d->loop);
-    }
+static DBusHandlerResult handle_message(DBusConnection *conn, DBusMessage *msg, void *d) {
+    signal_handler_struct *shs = (signal_handler_struct *)d;
+
+    if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL)
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    if (strcmp(dbus_message_get_interface(msg), NF_INTERFACE) != 0)
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    if (!shs->callback_func(dbus_message_get_member(msg), msg, shs->user_data))
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static int listen(GDBusConnection *conn, signal_callback_type cb, void *data) {
-    GMainLoop *loop;
+static void dlisten(DBusConnection *conn,
+        int (*callback_func)(const char *, DBusMessage *, void *),
+        void *user_data) {
+    DBusError error;
+    DBusObjectPathVTable vt;
+    signal_handler_struct shs;
 
     if (conn == NULL)
-        return 1;
+        return;
 
-    loop = g_main_loop_new(NULL, FALSE);
+    dbus_error_init(&error);
+    dbus_bus_add_match(conn, "type='signal',sender='" NF_NAME "'", NULL);
 
-    signal_callback_user_data_type ud;
-    ud.callback = cb;
-    ud.loop = loop;
-    ud.data = data;
-    ud.sub_id = g_dbus_connection_signal_subscribe(conn,
-                        NULL,
-                        "org.freedesktop.Notifications",
-                        NULL,
-                        "/org/freedesktop/Notifications",
-                        NULL,
-                        G_DBUS_SIGNAL_FLAGS_NONE,
-                        signal_callback,
-                        (gpointer)&ud,
-                        NULL);
-    g_main_loop_run(loop);
-    return 0;
+    vt.message_function = handle_message;
+    vt.unregister_function = NULL;
+    shs.user_data = user_data;
+    shs.callback_func = callback_func;
+    dbus_connection_try_register_object_path(conn, NF_PATH, &vt, &shs, &error);
+    if (dbus_error_is_set(&error)) {
+        fprintf(stderr, "Listening for signal: %s\n", error.message);
+        return;
+    }
+    while (dbus_connection_read_write_dispatch(conn, -1))
+        ;
 }
 
 static int get_int(char *str, long *out) {
@@ -140,178 +115,260 @@ static int get_int(char *str, long *out) {
     return (str != NULL && *str != '\0' && *end == '\0');
 }
 
-static int sync_send_callback(const gchar *signal_name,
-                              GVariant *parameters, void *data) {
-    guint32 id = *(guint32 *)data;
-    GVariant *iv = g_variant_get_child_value(parameters, 0);
-    if (id != g_variant_get_uint32(iv)) {
-        g_variant_unref(iv);
-        return 0;
+static int sync_send_callback(const char *signal_name,
+                              DBusMessage *msg, void *data) {
+    dbus_uint32_t id, close_reason;
+    const char *action_key;
+    long want_id = *(long *)data;
+    DBusError error;
+    dbus_error_init(&error);
+    if (strcmp(signal_name, "NotificationClosed") == 0) {
+        dbus_message_get_args(msg, &error,
+                DBUS_TYPE_UINT32, &id,
+                DBUS_TYPE_UINT32, &close_reason,
+                DBUS_TYPE_INVALID);
+        if (dbus_error_is_set(&error) || want_id != id)
+            return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+        return DBUS_HANDLER_RESULT_HANDLED;
+    } else if (strcmp(signal_name, "ActionInvoked") == 0) {
+        dbus_message_get_args(msg, &error,
+                DBUS_TYPE_UINT32, &id,
+                DBUS_TYPE_STRING, &action_key,
+                DBUS_TYPE_INVALID);
+        if (dbus_error_is_set(&error) || want_id != id)
+            return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+        printf("%s\n", action_key);
+        return DBUS_HANDLER_RESULT_HANDLED;
     }
-    g_variant_unref(iv);
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
 
-    if (!strcmp(signal_name, "NotificationClosed"))
-        return 1;
+static struct {
+    char *name;
+    size_t len;
+    char mode;
+} longopts[] = {
+    {"--app-name=", 11, 'a'},
+    {"--timeout=",  10, 't'},
+    {"--id=",        5, 'i'},
+    {"--actions=",  10, 'A'},
+    {"--hint=",      7, 'h'},
+    {"--urgency=",  10, 'u'},
+    {"--category=", 11, 'c'},
+    {"--icon=",      7, 'I'},
+    {NULL, 0, '\0'}
+};
 
-    if (!strcmp(signal_name, "ActionInvoked")) {
-        GVariant *av = g_variant_get_child_value(parameters, 1);
-        printf("%s\n", g_variant_get_string(av, NULL));
-        g_variant_unref(av);
+typedef struct {
+    char *app_name, *app_icon;
+    char *summary, *body;
+    char urgency, *category;
+    long id, timeout;
+
+    char *actions[50];
+    char *hints[50];
+    size_t nactions, nhints;
+} note_t;
+
+static void set_note_action(char *arg, DBusMessageIter *iter) {
+    char *c = arg;
+    while (*arg) {
+        while (*c && *c != ',') c++;
+        char reset = 0;
+        if (*c) {
+            reset = 1;
+            *c = '\0';
+        }
+
+        char *c2 = arg;
+        for (; *c2; c2++) {
+            if (*c2 != ':')
+                continue;
+            *c2 = '\0';
+            char *c3 = c2+1;
+            dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &arg);
+            dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &c3);
+            *c2 = ':';
+            break;
+        }
+        if (!*c2) {
+            dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &arg);
+            dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &arg);
+        }
+
+        arg = c + reset;
+        if (reset) *c = ',';
+        c += reset;
     }
-    return 0;
+}
+
+static void set_note_hint(char *arg, DBusMessageIter *iter) {
+#if 0
+    char *c2 = arg, *fs = arg, *name = NULL, *value = NULL;
+    for (; *c2; c2++) {
+        if (*c2 == ':') {
+            if (name == NULL) {
+                *c2 = '\0';
+                name = c2 + 1;
+            } else if (value == NULL) {
+                *c2 = '\0';
+                value = c2 + 1;
+            }
+        }
+    }
+    if (value == NULL) {
+        if (name == NULL) {
+            fprintf(stderr, "Hint must be formatted as "
+                    "NAME:VALUE or TYPE:NAME:VALUE\n");
+            return 2;
+        }
+        value = name;
+        name = fs;
+        fs = "s";
+    }
+    if (*fs == '\0')
+        fs = "s";
+
+    if (!g_variant_type_string_is_valid(fs)) {
+        fprintf(stderr, "'%s' is not a valid D-Bus variant type\n",
+                fs);
+        return 2;
+    }
+
+    /* Fix forgotten quotes.  For ease of use! */
+    if (*fs == 's' && fs[1] == '\0' && *value != '"') {
+        char *nv = malloc(strlen(value) + 3);
+        sprintf(nv, "\"%s\"", value);
+        value = nv;
+    }
+
+    GError *e = NULL;
+    GVariant *gv = g_variant_parse(G_VARIANT_TYPE(fs),
+            value, c2, NULL, &e);
+    if (e != NULL) {
+        fprintf(stderr, "Could not parse '%s' as '%s': %s\n",
+                value, fs, e->message);
+        return 2;
+    }
+    g_variant_builder_add(hints, "{sv}", name, gv);
+    break;
+#endif
+}
+
+// app_name, replaces_id, app_icon, summary, body, actions, hints, expire_timeout
+static void set_note(DBusMessage *msg, void *notep) {
+    note_t *note = (note_t *)notep;
+    dbus_uint32_t id = (dbus_uint32_t)note->id;
+    dbus_int32_t timeout = (dbus_int32_t)note->timeout;
+
+    DBusMessageIter iter, actiter, hintiter;
+    dbus_message_iter_init_append(msg, &iter);
+
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &note->app_name);
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_UINT32, &id);
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &note->app_icon);
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &note->summary);
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &note->body);
+
+    // actions - type "as"
+    dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &actiter);
+        for (size_t i = 0; i < note->nactions; i++)
+            set_note_action(note->actions[i], &actiter);
+    dbus_message_iter_close_container(&iter, &actiter);
+
+    // hints - type "a{sv}"
+    dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &hintiter);
+        if (note->urgency != -1) {  // urgency
+            DBusMessageIter ui, uiv;
+            static const char *urgstr = "urgency";
+            dbus_message_iter_open_container(&hintiter, DBUS_TYPE_DICT_ENTRY, NULL, &ui);
+                dbus_message_iter_append_basic(&ui, DBUS_TYPE_STRING, &urgstr);
+                dbus_message_iter_open_container(&ui, DBUS_TYPE_VARIANT, "y", &uiv);
+                    dbus_message_iter_append_basic(&uiv, DBUS_TYPE_BYTE, &note->urgency);
+                dbus_message_iter_close_container(&ui, &uiv);
+            dbus_message_iter_close_container(&hintiter, &ui);
+        }
+        if (note->category != NULL) {  // category
+            DBusMessageIter ci, civ;
+            static const char *catstr = "category";
+            dbus_message_iter_open_container(&hintiter, DBUS_TYPE_DICT_ENTRY, NULL, &ci);
+                dbus_message_iter_append_basic(&ci, DBUS_TYPE_STRING, &catstr);
+                dbus_message_iter_open_container(&ci, DBUS_TYPE_VARIANT, "s", &civ);
+                    dbus_message_iter_append_basic(&civ, DBUS_TYPE_STRING, &note->category);
+                dbus_message_iter_close_container(&ci, &civ);
+            dbus_message_iter_close_container(&hintiter, &ci);
+        }
+        for (size_t i = 0; i < note->nhints; i++)  // everything else
+            set_note_hint(note->hints[i], &hintiter);
+    dbus_message_iter_close_container(&iter, &hintiter);
+
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_INT32, &timeout);
 }
 
 extern int send_note(int argc, char **argv) {
-    char *app_name = "notcat";
-    char *app_icon = "";
-    char *summary = NULL;
-    char *body = NULL;
-    long id = 0;
-    long timeout = -1;
-    GVariantBuilder *actions = g_variant_builder_new(G_VARIANT_TYPE("as"));
-    GVariantBuilder *hints = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+    note_t note;
+    note.app_name = "notcat";
+    note.app_icon = "";
+    note.summary = NULL;
+    note.body = NULL;
+    note.urgency = -1;
+    note.category = NULL;
+    note.id = 0;
+    note.timeout = -1;
+    note.nactions = 0;
+    note.nhints = 0;
 
-    char print_id = 0;
-    char sync = 0;
-
+    bool print_id = false, sync = false;
     char mode = '\0';
     int skip = 0;
     int i;
-    for (i = 0; i < argc; i++) {
+    for (i = 0; i < argc; i++)
+top:
+    {
         char *arg = argv[i];
         switch (mode) {
-        // We've seen a single-letter option, like "-a".
-        // Use the current argument to get the value for that field.
+        // We've seen an option, like "-a" or "--app-name", and need the value.
         case 'a':
-get_appname:
-            app_name = arg;
+            note.app_name = arg;
             break;
         case 'i':
-get_id:
-            if (!get_int(argv[i], &id) || id < 0 || id > 0xFFFFFFFF) {
+            if (!get_int(argv[i], &note.id) || note.id < 0 || note.id > 0xFFFFFFFF) {
                 fprintf(stderr, "ID must be a valid value of uint32\n");
                 return 2;
             }
             break;
         case 'I':
-get_icon:
-            app_icon = arg;
+            note.app_icon = arg;
             break;
         case 't':
-get_timeout:
-            if (!get_int(argv[i], &timeout) || timeout < -1 || timeout > 0x7FFFFFFF) {
-                fprintf(stderr, "Timeout must be a valid int32 not less "
-                        "than -1\n");
+            if (!get_int(argv[i], &note.timeout) || note.timeout < -1 || note.timeout > 0x7FFFFFFF) {
+                fprintf(stderr, "Timeout must be a valid int32 not less than -1\n");
                 return 2;
             }
             break;
         case 'c':
-get_category:
-            g_variant_builder_add(hints, "{sv}", "category",
-                    g_variant_new_string(arg));
+            note.category = arg;
             break;
         case 'A':
-get_actions: {
-            char *c = arg;
-            while (*arg) {
-                while (*c && *c != ',') c++;
-                char reset = 0;
-                if (*c) {
-                    reset = 1;
-                    *c = '\0';
-                }
-
-                char *c2 = arg;
-                for (; *c2; c2++) {
-                    if (*c2 != ':')
-                        continue;
-                    *c2 = '\0';
-                    g_variant_builder_add(actions, "s", arg);
-                    g_variant_builder_add(actions, "s", c2 + 1);
-                    *c2 = ':';
-                    break;
-                }
-                if (!*c2) {
-                    g_variant_builder_add(actions, "s", arg);
-                    g_variant_builder_add(actions, "s", arg);
-                }
-
-                arg = c + reset;
-                if (reset) *c = ',';
-                c += reset;
-            }
+            note.actions[note.nactions++] = arg;
             break;
-        }
         case 'h':
-get_hint: {
-            char *c2 = arg, *fs = arg, *name = NULL, *value = NULL;
-            for (; *c2; c2++) {
-                if (*c2 == ':') {
-                    if (name == NULL) {
-                        *c2 = '\0';
-                        name = c2 + 1;
-                    } else if (value == NULL) {
-                        *c2 = '\0';
-                        value = c2 + 1;
-                    }
-                }
-            }
-            if (value == NULL) {
-                if (name == NULL) {
-                    fprintf(stderr, "Hint must be formatted as "
-                            "NAME:VALUE or TYPE:NAME:VALUE\n");
-                    return 2;
-                }
-                value = name;
-                name = fs;
-                fs = "s";
-            }
-            if (*fs == '\0')
-                fs = "s";
-
-            if (!g_variant_type_string_is_valid(fs)) {
-                fprintf(stderr, "'%s' is not a valid D-Bus variant type\n",
-                        fs);
-                return 2;
-            }
-
-            /* Fix forgotten quotes.  For ease of use! */
-            if (*fs == 's' && fs[1] == '\0' && *value != '"') {
-                char *nv = malloc(strlen(value) + 3);
-                sprintf(nv, "\"%s\"", value);
-                value = nv;
-            }
-
-            GError *e = NULL;
-            GVariant *gv = g_variant_parse(G_VARIANT_TYPE(fs),
-                    value, c2, NULL, &e);
-            if (e != NULL) {
-                fprintf(stderr, "Could not parse '%s' as '%s': %s\n",
-                        value, fs, e->message);
-                return 2;
-            }
-            g_variant_builder_add(hints, "{sv}", name, gv);
+            note.hints[note.nhints++] = arg;
             break;
-        }
         case 'u':
-get_urgency:
-            if (!strcmp(arg, "low") || !strcmp(arg, "LOW")) {
-                g_variant_builder_add(hints, "{sv}", "urgency",
-                        g_variant_new_byte(0));
-            } else if (!strcmp(arg, "normal") || !strcmp(arg, "NORMAL")) {
-                g_variant_builder_add(hints, "{sv}", "urgency",
-                        g_variant_new_byte(1));
-            } else if (!strcmp(arg, "critical") || !strcmp(arg, "CRITICAL")) {
-                g_variant_builder_add(hints, "{sv}", "urgency",
-                        g_variant_new_byte(2));
+            if (strcmp(arg, "low") == 0 || strcmp(arg, "LOW") == 0) {
+                note.urgency = 0;
+            } else if (strcmp(arg, "normal") == 0 || strcmp(arg, "NORMAL") == 0) {
+                note.urgency = 1;
+            } else if (strcmp(arg, "critical") == 0 || strcmp(arg, "CRITICAL") == 0) {
+                note.urgency = 2;
             } else {
                 fprintf(stderr, "Urgency must be one of 'low', 'normal', or 'critical'\n");
                 return 2;
             }
             break;
 
-        // We're in a normal state -- the last arg wasn't anything
-        // interesting.
+        // We're ready to parse a fresh new arg.
         default: {
             if (arg[0] == '-' && !skip) {
                 // Time for option parsing!
@@ -323,7 +380,7 @@ get_urgency:
                         continue;
                     case 'p':
                         // Print ID notification receives
-                        print_id = 1;
+                        print_id = true;
                         continue;
                     case 't': case 'i': case 'a': case 'A': case 'h':
                     case 'u': case 'c': case 'I':
@@ -338,39 +395,21 @@ get_urgency:
                     }
                 }
 
-                // longopt processing.  This is some spaghetti nonsense,
-                // but it deduplicates the actual per-option parsing
-                // itself, so we count it as a win.
-                if (!strncmp(arg, "--app-name=", 11)) {
-                    arg += 11;
-                    goto get_appname;
-                } else if (!strncmp(arg, "--timeout=", 10)) {
-                    arg += 10;
-                    goto get_timeout;
-                } else if (!strncmp(arg, "--id=", 5)) {
-                    arg += 5;
-                    goto get_id;
-                } else if (!strncmp(arg, "--actions=", 10)) {
-                    arg += 10;
-                    goto get_actions;
-                } else if (!strncmp(arg, "--hint=", 7)) {
-                    arg += 7;
-                    goto get_hint;
-                } else if (!strncmp(arg, "--urgency=", 10)) {
-                    arg += 10;
-                    goto get_urgency;
-                } else if (!strncmp(arg, "--category=", 11)) {
-                    arg += 11;
-                    goto get_category;
-                } else if (!strncmp(arg, "--icon=", 7)) {
-                    arg += 7;
-                    goto get_icon;
-                } else if (!strcmp(arg, "--print-id")) {
-                    print_id = 1;
-                    break;
+                // longopt parsing; a bit hacky.
+                for (int i = 0; longopts[i].name != NULL; i++) {
+                    if (strncmp(arg, longopts[i].name, longopts[i].len) == 0) {
+                        arg += longopts[i].len;
+                        mode = longopts[i].mode;
+                        goto top;
+                    }
+                }
+
+                if (!strcmp(arg, "--print-id")) {
+                    print_id = true;
+                    break; /* from case */
                 } else if (!strcmp(arg, "--sync")) {
-                    sync = 1;
-                    break;
+                    sync = true;
+                    break; /* from case */
                 }
 
                 fprintf(stderr, "Unrecognized option '%s'\n", arg);
@@ -378,10 +417,10 @@ get_urgency:
 
             // If it's not an option, then it's the summary, the body, or
             // an error.  Do the right thing in those cases.
-            if (summary == NULL) {
-                summary = arg;
-            } else if (body == NULL) {
-                body = arg;
+            if (note.summary == NULL) {
+                note.summary = arg;
+            } else if (note.body == NULL) {
+                note.body = arg;
             } else {
                 fprintf(stderr, "Exactly one summary and one body argument expected\n");
                 return 2;
@@ -395,159 +434,181 @@ get_urgency:
         return 2;
     }
 
-    if (summary == NULL)
-        summary = "";
+    if (note.summary == NULL)
+        note.summary = "";
 
-    if (body == NULL)
-        body = "";
+    if (note.body == NULL)
+        note.body = "";
 
-    GDBusConnection *conn = connect();
-    GDBusProxy *proxy = make_proxy(conn);
-    if (proxy == NULL)
-        return 1;
-    GVariant *result = call(proxy, "Notify",
-            g_variant_new("(susssasa{sv}i)",
-                app_name,
-                (u_int32_t) id,
-                app_icon,
-                summary,
-                body,
-                actions,
-                hints,
-                (int32_t) timeout));
-
-    if (result == NULL)
+    DBusConnection *conn = dconnect();
+    if (conn == NULL)
         return 1;
 
-    id = g_variant_get_uint32(g_variant_get_child_value(result, 0));
+    DBusMessage *msg = dcall(conn, "Notify", set_note, &note);
+    if (msg == NULL)
+        return 1;
+
+    dbus_uint32_t id;
+    DBusError error;
+    dbus_error_init(&error);
+    dbus_message_get_args(msg, &error, DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID);
+    if (dbus_error_is_set(&error)) {
+        fprintf(stderr, "Handling response from notification server: %s\n", error.message);
+        return 1;
+    }
 
     if (print_id)
-        printf("%ld\n", id);
+        printf("%u\n", id);
+
+    dbus_message_unref(msg);
 
     if (!sync)
         return 0;
 
-    return listen(conn, sync_send_callback, &id);
+    dlisten(conn, sync_send_callback, &id);
+    return 0;
+}
+
+static void set_id(DBusMessage *msg, void *idp) {
+    dbus_message_append_args(msg, DBUS_TYPE_UINT32, idp, DBUS_TYPE_INVALID);
 }
 
 extern int close_note(char *arg) {
     char *end;
-    long id = strtol(arg, &end, 10);
+    dbus_uint32_t id;
+    long lid = strtol(arg, &end, 10);
     if (*arg == '\0' || *end != '\0')
         return 10;
     if (id < 0 || id > 65536)
         return 11;
+    id = (dbus_uint32_t)lid;
 
-    GDBusProxy *proxy = make_proxy(connect());
-    GVariant *result = call(proxy, "CloseNotification",
-                            g_variant_new("(u)", id));
-
-    return (result == NULL);
+    DBusMessage *msg = dcall(dconnect(), "CloseNotification", set_id, &id);
+    if (msg == NULL)
+        return 1;
+    dbus_message_unref(msg);
+    return 0;
 }
 
-extern int get_capabilities(void) {
-    GDBusProxy *proxy = make_proxy(connect());
-    GVariant *result = call(proxy, "GetCapabilities", NULL);
+// TODO: public get_capabilities() wrapping a private call_get_capabilities(char *)
+extern int get_capabilities(char *test_cap) {
+    DBusMessageIter oiter, iter;
+    DBusMessage *msg = dcall(dconnect(), "GetCapabilities", NULL, NULL);
 
-    if (result == NULL)
+    if (msg == NULL)
         return 1;
 
-    GVariant *inner = g_variant_get_child_value(result, 0);
-
-    size_t len;
-    const char **arr = g_variant_get_strv(inner, &len);
-    for (size_t i = 0; i < len; i++)
-        printf("%s\n", arr[i]);
-
-    return 0;
+    // TODO: we're making a lot of assumptions on message type that may not be
+    // correct
+    dbus_message_iter_init(msg, &oiter);
+    dbus_message_iter_recurse(&oiter, &iter);
+    while (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_INVALID) {
+        DBusBasicValue cap;
+        dbus_message_iter_get_basic(&iter, &cap);
+        if (test_cap != NULL) {
+            if (strcmp(cap.str, test_cap) == 0) {
+                dbus_message_unref(msg);
+                return 0;
+            }
+        } else
+            printf("%s\n", cap.str);
+        dbus_message_iter_next(&iter);
+    }
+    dbus_message_unref(msg);
+    return (test_cap != NULL ? 1 : 0);
 }
 
 extern int get_server_information(void) {
-    GDBusProxy *proxy = make_proxy(connect());
-    GVariant *result = call(proxy, "GetServerInformation", NULL);
-
-    if (result == NULL)
+    const char *name, *vendor, *version, *spec;
+    DBusError error;
+    DBusMessage *msg = dcall(dconnect(), "GetServerInformation", NULL, NULL);
+    if (msg == NULL)
         return 1;
 
-    printf("name: %s\n", g_variant_get_string(
-                g_variant_get_child_value(result, 0), NULL));
-    printf("vendor: %s\n", g_variant_get_string(
-                g_variant_get_child_value(result, 1), NULL));
-    printf("version: %s\n", g_variant_get_string(
-                g_variant_get_child_value(result, 2), NULL));
-    printf("spec: %s\n", g_variant_get_string(
-                g_variant_get_child_value(result, 3), NULL));
+    dbus_error_init(&error);
+    dbus_message_get_args(msg, &error,
+            DBUS_TYPE_STRING, &name,
+            DBUS_TYPE_STRING, &vendor,
+            DBUS_TYPE_STRING, &version,
+            DBUS_TYPE_STRING, &spec,
+            DBUS_TYPE_INVALID);
 
+    if (dbus_error_is_set(&error))
+        return 1;
+
+    printf("name: %s\nvendor: %s\nversion: %s\nspec: %s\n",
+            name, vendor, version, spec);
+
+    dbus_message_unref(msg);
     return 0;
 }
 
-static int listen_callback(const gchar *signal_name,
-                           GVariant *parameters, void *data) {
-    if (!strcmp(signal_name, "NotificationClosed")) {
-        GVariant *iv = g_variant_get_child_value(parameters, 0);
-        GVariant *rv = g_variant_get_child_value(parameters, 1);
-        guint32 r = g_variant_get_uint32(rv);
-        printf("closed %d (%s)\n",
-                g_variant_get_uint32(iv),
-                (r == 1 ? "expired"
-                 : r == 2 ? "dismissed"
-                 : r == 3 ? "closed"
-                 : "unknown reason"));
-        g_variant_unref(iv);
-        g_variant_unref(rv);
-    } else if (!strcmp(signal_name, "ActionInvoked")) {
-        GVariant *iv = g_variant_get_child_value(parameters, 0);
-        GVariant *av = g_variant_get_child_value(parameters, 1);
-        printf("invoked %d %s\n",
-                g_variant_get_uint32(iv),
-                g_variant_get_string(av, NULL));
-        g_variant_unref(iv);
-        g_variant_unref(av);
-    } else {
-        printf("unknown signal %s emitted\n", signal_name);
+static int dlisten_callback(const char *signal_name,
+                            DBusMessage *msg, void *data) {
+    dbus_uint32_t id;
+    DBusError error;
+    dbus_error_init(&error);
+    if (strcmp(signal_name, "NotificationClosed") == 0) {
+        dbus_uint32_t reason;
+        dbus_message_get_args(msg, &error,
+                DBUS_TYPE_UINT32, &id,
+                DBUS_TYPE_UINT32, &reason,
+                DBUS_TYPE_INVALID);
+        if (dbus_error_is_set(&error))
+            fprintf(stderr, "unpacking NotificationClosed arguments: %s\n", error.message);
+        else
+            printf("closed %d (%s)\n", id,
+                    (reason == 1 ? "expired"
+                     : reason == 2 ? "dismissed"
+                     : reason == 3 ? "closed"
+                     : "unknown reason"));
+        return DBUS_HANDLER_RESULT_HANDLED;
+    } else if (strcmp(signal_name, "ActionInvoked") == 0) {
+        const char *key;
+        dbus_message_get_args(msg, &error,
+                DBUS_TYPE_UINT32, &id,
+                DBUS_TYPE_STRING, &key,
+                DBUS_TYPE_INVALID);
+        if (dbus_error_is_set(&error))
+            fprintf(stderr, "unpacking NotificationClosed arguments: %s\n", error.message);
+        else
+            printf("invoked %d %s\n", id, key);
+        return DBUS_HANDLER_RESULT_HANDLED;
     }
-    return 0;
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-extern int listen_for_signals(void) {
-    return listen(connect(), listen_callback, NULL);
+static void set_action(DBusMessage *msg, void *dp) {
+    struct { dbus_uint32_t id; const char *key; } *d = dp;
+    dbus_message_append_args(msg,
+            DBUS_TYPE_UINT32, &(d->id),
+            DBUS_TYPE_STRING, &(d->key),
+            DBUS_TYPE_INVALID);
 }
 
 extern int invoke_action(int argc, char **argv) {
-    char *end;
-    char *idarg = argv[0];
+    char *end, *idarg = argv[0];
+    struct { dbus_uint32_t id; const char *key; } d;
+    DBusMessage *msg;
     long id = strtol(idarg, &end, 10);
     if (*idarg == '\0' || *end != '\0')
         return 10;
     if (id < 0 || id > 65536)
         return 11;
 
-    char *key = (argc > 1 ? argv[1] : "default");
-
-    GDBusProxy *proxy = make_proxy(connect());
-    GVariant *result = call(proxy, "GetCapabilities", NULL);
-    if (result == NULL)
-        return 1;
-    result = g_variant_get_child_value(result, 0);
-
-    int got_cap = 0;
-    size_t i, len;
-    const gchar **cs = g_variant_get_strv(result, &len);
-    for (i = 0; i < len; i++) {
-        if (!strcmp(cs[i], "x-notlib-remote-actions")) {
-            got_cap = 1;
-            break;
-        }
-    }
-    if (cs) g_free(cs);
-    g_variant_unref(result);
-
-    if (!got_cap) {
-        fprintf(stderr, "Notification server does not support remote "
-                        "actions\n");
+    if (get_capabilities("x-notlib-remote-actions") != 0) {
+        fprintf(stderr, "Notification server does not support remote actions\n");
         return 1;
     }
+    d.id  = (dbus_uint32_t)id;
+    d.key = (argc > 1 ? argv[1] : "default");
+    if ((msg = dcall(dconnect(), "InvokeAction", set_action, &d)) == NULL)
+        return 1;
+    dbus_message_unref(msg);
+    return 0;
+}
 
-    result = call(proxy, "InvokeAction", g_variant_new("(us)", id, key));
-    return (result == NULL);
+extern int listen_for_signals(void) {
+    dlisten(dconnect(), dlisten_callback, NULL);
+    return 0;
 }

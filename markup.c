@@ -31,9 +31,9 @@
 #define BODY_TAG_CLOSE  3
 
 typedef struct {
-	char type;
-	const char *str;
-	size_t len;
+    char type;
+    const char *str;
+    size_t len;
 } token;
 
 static ssize_t next_token(const char *in, token *t) {
@@ -186,13 +186,11 @@ after_loop:
 
 static int last_char_was_newline = 0;
 
-typedef struct {
+static struct {
     const char *code;
     size_t len;
     char out;
-} ampcode;
-
-static ampcode ampcodes[] = {
+} ampcodes[] = {
     {"&amp;", 5, '&'},
     {"&lt;", 4, '<'},
     {"&gt;", 4, '>'},
@@ -246,7 +244,7 @@ static size_t drain_node(node *n, char *out) {
     return ret;
 }
 
-/* NOTE: we do not check the length of out. this is fine as long as we only strip markup */
+// NOTE: we do not check the length of out. this is fine as long as we only strip markup
 extern int markup_body(const char *in, char *out) {
     last_char_was_newline = 0;
     node *tree = parse(in);

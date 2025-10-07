@@ -96,7 +96,7 @@ extern void add_capability(char *);
 
 extern int send_note(int argc, char **argv);
 extern int close_note(char *arg);
-extern int get_capabilities(void);
+extern int get_capabilities(char *test_cap);
 extern int get_server_information(void);
 extern int listen_for_signals(void);
 extern int invoke_action(int argc, char **argv);
