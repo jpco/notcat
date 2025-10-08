@@ -26,11 +26,20 @@
 
 #include "notcat.h"
 
+/*
+ * "core" D-Bus behavior. connect(), call(), listen().
+ */
+
 #define NF_INTERFACE    "org.freedesktop.Notifications"
 #define NF_NAME         "org.freedesktop.Notifications"
 #define NF_PATH         "/org/freedesktop/Notifications"
 
-static DBusConnection *dconnect(void) {
+/*
+ * connect to the notification server.
+ *  - returns: the connection on sucess, NULL on error.
+ *  - prints any errors encountered.
+ */
+static DBusConnection *connect(void) {
     DBusConnection *conn;
     DBusError error;
 
@@ -43,7 +52,15 @@ static DBusConnection *dconnect(void) {
     return conn;
 }
 
-static DBusMessage *dcall(DBusConnection *conn, char *method,
+/*
+ * make a call to the server.
+ *  - takes: a connection, a name of a method, a function called to set
+ *    arguments, and a pointer of data for the function to use.
+ *  - returns: the response from the server on success, NULL on error.
+ *    the response must be unref()ed if non-null.
+ *  - prints any errors encountered.
+ */
+static DBusMessage *call(DBusConnection *conn, char *method,
         void (*infunc)(DBusMessage *, void *),
         void *user_data) {
     DBusError error;
@@ -66,6 +83,14 @@ static DBusMessage *dcall(DBusConnection *conn, char *method,
     return resp;
 }
 
+bool break_listening_loop = false;
+bool listening_loop_result = 0;
+
+#define CALLBACK_OK          0  // callback handled message successfully; continue
+#define CALLBACK_OK_STOP    -1  // callback handled message successfully; stop loop
+#define CALLBACK_MISS       -2  // callback doesn't care about this message; continue
+                                // positive values from callback functions stop loop
+
 typedef struct {
     int (*callback_func)(const char *, DBusMessage *, void *);
     void *user_data;
@@ -78,12 +103,35 @@ static DBusHandlerResult handle_message(DBusConnection *conn, DBusMessage *msg, 
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     if (strcmp(dbus_message_get_interface(msg), NF_INTERFACE) != 0)
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    if (!shs->callback_func(dbus_message_get_member(msg), msg, shs->user_data))
+
+    int result;
+    switch ((result = shs->callback_func(dbus_message_get_member(msg), msg, shs->user_data))) {
+    case CALLBACK_OK:
+        return DBUS_HANDLER_RESULT_HANDLED;
+    case CALLBACK_MISS:
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    return DBUS_HANDLER_RESULT_HANDLED;
+    case CALLBACK_OK_STOP:
+        break_listening_loop = true;
+        return DBUS_HANDLER_RESULT_HANDLED;
+    default:
+        if (result <= 0) {
+            fprintf(stderr, "Bug! Callback result is %d\n", result);
+            listening_loop_result = 3;
+        } else
+            listening_loop_result = result;
+        break_listening_loop = true;
+        return DBUS_HANDLER_RESULT_HANDLED;
+    }
 }
 
-static void dlisten(DBusConnection *conn,
+/*
+ * listen for signals from the notification server.
+ *  - takes: a connection, a callback function called when a signal is
+ *    received, and a pointer to some data.
+ *  - returns: an error code based on the return value of the callback function
+ *  - will continue listening until the callback function returns a stop value
+ */
+static int listen(DBusConnection *conn,
         int (*callback_func)(const char *, DBusMessage *, void *),
         void *user_data) {
     DBusError error;
@@ -91,7 +139,7 @@ static void dlisten(DBusConnection *conn,
     signal_handler_struct shs;
 
     if (conn == NULL)
-        return;
+        return 2;
 
     dbus_error_init(&error);
     dbus_bus_add_match(conn, "type='signal',sender='" NF_NAME "'", NULL);
@@ -103,11 +151,19 @@ static void dlisten(DBusConnection *conn,
     dbus_connection_try_register_object_path(conn, NF_PATH, &vt, &shs, &error);
     if (dbus_error_is_set(&error)) {
         fprintf(stderr, "Listening for signal: %s\n", error.message);
-        return;
+        return 2;
     }
-    while (dbus_connection_read_write_dispatch(conn, -1))
-        ;
+    while (dbus_connection_read_write_dispatch(conn, -1)) {
+        if (break_listening_loop)
+            return listening_loop_result;
+    }
+    return 0;
 }
+
+
+//
+// actual calls.
+//
 
 static int get_int(char *str, long *out) {
     char *end;
@@ -128,19 +184,19 @@ static int sync_send_callback(const char *signal_name,
                 DBUS_TYPE_UINT32, &close_reason,
                 DBUS_TYPE_INVALID);
         if (dbus_error_is_set(&error) || want_id != id)
-            return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-        return DBUS_HANDLER_RESULT_HANDLED;
+            return CALLBACK_MISS;
+        return CALLBACK_OK_STOP;
     } else if (strcmp(signal_name, "ActionInvoked") == 0) {
         dbus_message_get_args(msg, &error,
                 DBUS_TYPE_UINT32, &id,
                 DBUS_TYPE_STRING, &action_key,
                 DBUS_TYPE_INVALID);
         if (dbus_error_is_set(&error) || want_id != id)
-            return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+            return CALLBACK_MISS;
         printf("%s\n", action_key);
-        return DBUS_HANDLER_RESULT_HANDLED;
+        return CALLBACK_OK;
     }
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    return CALLBACK_MISS;
 }
 
 static struct {
@@ -322,10 +378,9 @@ extern int send_note(int argc, char **argv) {
     char mode = '\0';
     int skip = 0;
     int i;
-    for (i = 0; i < argc; i++)
-top:
-    {
+    for (i = 0; i < argc; i++) {
         char *arg = argv[i];
+top:
         switch (mode) {
         // We've seen an option, like "-a" or "--app-name", and need the value.
         case 'a':
@@ -440,11 +495,11 @@ top:
     if (note.body == NULL)
         note.body = "";
 
-    DBusConnection *conn = dconnect();
+    DBusConnection *conn = connect();
     if (conn == NULL)
         return 1;
 
-    DBusMessage *msg = dcall(conn, "Notify", set_note, &note);
+    DBusMessage *msg = call(conn, "Notify", set_note, &note);
     if (msg == NULL)
         return 1;
 
@@ -465,8 +520,7 @@ top:
     if (!sync)
         return 0;
 
-    dlisten(conn, sync_send_callback, &id);
-    return 0;
+    return listen(conn, sync_send_callback, &id);
 }
 
 static void set_id(DBusMessage *msg, void *idp) {
@@ -483,23 +537,20 @@ extern int close_note(char *arg) {
         return 11;
     id = (dbus_uint32_t)lid;
 
-    DBusMessage *msg = dcall(dconnect(), "CloseNotification", set_id, &id);
+    DBusMessage *msg = call(connect(), "CloseNotification", set_id, &id);
     if (msg == NULL)
         return 1;
     dbus_message_unref(msg);
     return 0;
 }
 
-// TODO: public get_capabilities() wrapping a private call_get_capabilities(char *)
-extern int get_capabilities(char *test_cap) {
+static int call_get_capabilities(DBusConnection *conn, char *test_cap) {
     DBusMessageIter oiter, iter;
-    DBusMessage *msg = dcall(dconnect(), "GetCapabilities", NULL, NULL);
+    DBusMessage *msg = call(connect(), "GetCapabilities", NULL, NULL);
 
     if (msg == NULL)
         return 1;
 
-    // TODO: we're making a lot of assumptions on message type that may not be
-    // correct
     dbus_message_iter_init(msg, &oiter);
     dbus_message_iter_recurse(&oiter, &iter);
     while (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_INVALID) {
@@ -518,10 +569,14 @@ extern int get_capabilities(char *test_cap) {
     return (test_cap != NULL ? 1 : 0);
 }
 
+extern int get_capabilities(void) {
+    return call_get_capabilities(connect(), NULL);
+}
+
 extern int get_server_information(void) {
     const char *name, *vendor, *version, *spec;
     DBusError error;
-    DBusMessage *msg = dcall(dconnect(), "GetServerInformation", NULL, NULL);
+    DBusMessage *msg = call(connect(), "GetServerInformation", NULL, NULL);
     if (msg == NULL)
         return 1;
 
@@ -543,7 +598,7 @@ extern int get_server_information(void) {
     return 0;
 }
 
-static int dlisten_callback(const char *signal_name,
+static int listen_callback(const char *signal_name,
                             DBusMessage *msg, void *data) {
     dbus_uint32_t id;
     DBusError error;
@@ -562,7 +617,7 @@ static int dlisten_callback(const char *signal_name,
                      : reason == 2 ? "dismissed"
                      : reason == 3 ? "closed"
                      : "unknown reason"));
-        return DBUS_HANDLER_RESULT_HANDLED;
+        return CALLBACK_OK;
     } else if (strcmp(signal_name, "ActionInvoked") == 0) {
         const char *key;
         dbus_message_get_args(msg, &error,
@@ -573,9 +628,9 @@ static int dlisten_callback(const char *signal_name,
             fprintf(stderr, "unpacking NotificationClosed arguments: %s\n", error.message);
         else
             printf("invoked %d %s\n", id, key);
-        return DBUS_HANDLER_RESULT_HANDLED;
+        return CALLBACK_OK;
     }
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    return CALLBACK_MISS;
 }
 
 static void set_action(DBusMessage *msg, void *dp) {
@@ -596,19 +651,22 @@ extern int invoke_action(int argc, char **argv) {
     if (id < 0 || id > 65536)
         return 11;
 
-    if (get_capabilities("x-notlib-remote-actions") != 0) {
+    DBusConnection *conn = connect();
+    if (conn == NULL)
+        return 1;
+
+    if (call_get_capabilities(conn, "x-notlib-remote-actions") != 0) {
         fprintf(stderr, "Notification server does not support remote actions\n");
         return 1;
     }
     d.id  = (dbus_uint32_t)id;
     d.key = (argc > 1 ? argv[1] : "default");
-    if ((msg = dcall(dconnect(), "InvokeAction", set_action, &d)) == NULL)
+    if ((msg = call(conn, "InvokeAction", set_action, &d)) == NULL)
         return 1;
     dbus_message_unref(msg);
     return 0;
 }
 
 extern int listen_for_signals(void) {
-    dlisten(dconnect(), dlisten_callback, NULL);
-    return 0;
+    return listen(connect(), listen_callback, NULL);
 }

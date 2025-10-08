@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
         }
         if (!strcmp(argv[1], "getcapabilities")) {
             if (argc != 2) usage(argv[0], 2);
-            return get_capabilities(NULL);
+            return get_capabilities();
         }
         if (!strcmp(argv[1], "getserverinfo")) {
             if (argc != 2) usage(argv[0], 2);
